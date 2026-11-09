@@ -46,21 +46,24 @@ def _block_table(txs: pd.DataFrame, blocks: pd.DataFrame, mask: pd.Series | None
     return s.reindex(idx, fill_value=0.0).to_numpy()
 
 
-def monthly_series(txs: pd.DataFrame, blocks: pd.DataFrame) -> tuple[list[dict], dict[str, np.ndarray]]:
-    rng = np.random.default_rng(C.BOOTSTRAP_SEED)
-    rows, headline_draws = [], {}
-    periods = sorted(blocks["period"].unique())
-    txs = txs.copy()
-    for col in ("relayed", "success"):
-        txs[col] = txs[col].astype(bool)
-    txs["to_intents"] = txs["real_receiver"].eq(C.INTENTS_CONTRACT) | txs["receiver"].eq(C.INTENTS_CONTRACT)
+ROLL_NAMES = ("tx_auto", "fee_init_auto", "fee_paid_auto")
 
-    specs = {   # name -> (numerator mask, weight column, denominator mask)
+
+def _month_no(p: str) -> int:
+    return int(p[:4]) * 12 + int(p[5:]) - 1
+
+
+def make_specs(txs: pd.DataFrame) -> dict:
+    """name -> (numerator mask, weight column or None, denominator mask or None); shared by monthly and window tests."""
+    judged = txs["init_class"].ne(LOW)
+    return {
         "tx_auto": (txs["init_class"].eq(AUTO), None, None),
         "tx_auto_upper": (txs["init_class"].isin([AUTO, LOW]), None, None),
         "tx_human": (txs["init_class"].eq(HUMAN), None, None),
         "tx_low": (txs["init_class"].eq(LOW), None, None),
         "tx_auto_of_classified": (txs["init_class"].eq(AUTO), None, txs["init_class"].isin([AUTO, HUMAN])),
+        "tx_auto_t40": (judged & (txs["init_score"] >= 40), None, None),
+        "tx_auto_t60": (judged & (txs["init_score"] >= 60), None, None),
         "fee_init_auto": (txs["init_class"].eq(AUTO), "fee_near", None),
         "fee_init_auto_upper": (txs["init_class"].isin([AUTO, LOW]), "fee_near", None),
         "fee_paid_auto": (txs["payer_class"].eq(AUTO), "fee_near", None),
@@ -68,14 +71,33 @@ def monthly_series(txs: pd.DataFrame, blocks: pd.DataFrame) -> tuple[list[dict],
         "to_intents": (txs["to_intents"], None, None),
         "failed": (~txs["success"], None, None),
     }
+
+
+def monthly_series(txs: pd.DataFrame, blocks: pd.DataFrame, rates: dict | None = None) -> tuple[list[dict], dict[str, np.ndarray]]:
+    """Per-month shares with cluster-bootstrap CIs, a 3-month pooled estimate and threshold sensitivity.
+
+    `rates` (optional): {"tpr", "fpr"} measured on the validation TEST split, used for a Rogan-Gladen
+    bias-adjusted share. The adjustment ignores the uncertainty of those rates, which the dashboard states.
+    """
+    rng = np.random.default_rng(C.BOOTSTRAP_SEED)
+    periods = sorted(blocks["period"].unique())
+    txs = txs.copy()
+    for col in ("relayed", "success"):
+        txs[col] = txs[col].astype(bool)
+    txs["to_intents"] = txs["real_receiver"].eq(C.INTENTS_CONTRACT) | txs["receiver"].eq(C.INTENTS_CONTRACT)
+    specs = make_specs(txs)
+    per_block: dict[str, dict[str, tuple[np.ndarray, np.ndarray]]] = {}
+    rows, headline_draws = [], {}
     for p in periods:
         b = blocks[blocks["period"] == p].reset_index(drop=True)
         t = txs[txs["period"] == p]
         row = {"period": p, "blocks": int(len(b)), "txs_sampled": int(len(t)),
                "tx_per_block": float(b["num_tx"].mean()), "fee_near_per_block": float(b["tokens_burnt"].mean())}
+        per_block[p] = {}
         for name, (nmask, weight, dmask) in specs.items():
             num = _block_table(t, b, nmask.loc[t.index], weight)
             den = _block_table(t, b, None if dmask is None else dmask.loc[t.index], weight)
+            per_block[p][name] = (num, den)
             res = _bootstrap(num, den, rng)
             if res is None:
                 continue
@@ -83,8 +105,34 @@ def monthly_series(txs: pd.DataFrame, blocks: pd.DataFrame) -> tuple[list[dict],
             row[name], row[name + "_lo"], row[name + "_hi"] = point, lo, hi
             if name == "tx_auto":
                 headline_draws[p] = draws
+        if rates and "tx_auto_of_classified" in row:
+            for k in ("", "_lo", "_hi"):
+                adj = rogan_gladen_share(row["tx_auto_of_classified" + k], rates)
+                if adj is not None:
+                    row["tx_auto_adj" + k] = adj
         rows.append(row)
+
+    # pooled 3-month window (this month and the two before it, when sampled): tighter, smoother
+    by_p = {r["period"]: r for r in rows}
+    for p in periods:
+        window = [q for q in periods if 0 <= _month_no(p) - _month_no(q) <= 2]
+        if len(window) < 2:
+            continue
+        for name in ROLL_NAMES:
+            num = np.concatenate([per_block[q][name][0] for q in window])
+            den = np.concatenate([per_block[q][name][1] for q in window])
+            res = _bootstrap(num, den, rng)
+            if res:
+                by_p[p][name + "_r3"], by_p[p][name + "_r3_lo"], by_p[p][name + "_r3_hi"] = res[:3]
     return rows, headline_draws
+
+
+def rogan_gladen_share(observed: float, rates: dict) -> float | None:
+    from .validate import rogan_gladen
+    tpr, fpr = rates.get("tpr"), rates.get("fpr")
+    if tpr is None or fpr is None:
+        return None
+    return rogan_gladen(observed, tpr, fpr)
 
 
 def trend_forecast(periods: list[str], draws: dict[str, np.ndarray], months: int = 24, horizon: int = 12) -> dict:
@@ -140,17 +188,39 @@ def concentration(txs: pd.DataFrame, last_n_periods: int = 6, top: int = 15) -> 
     }
 
 
+def prepare(txs: pd.DataFrame) -> pd.DataFrame:
+    txs = txs.copy()
+    for col in ("relayed", "success"):
+        txs[col] = txs[col].astype(bool)
+    txs["to_intents"] = txs["real_receiver"].eq(C.INTENTS_CONTRACT) | txs["receiver"].eq(C.INTENTS_CONTRACT)
+    return txs
+
+
 def run() -> None:
-    txs = pd.read_csv(C.DERIVED / "classified_txs.csv.gz", low_memory=False)
+    from . import insights as I
+    txs = prepare(pd.read_csv(C.DERIVED / "classified_txs.csv.gz", low_memory=False))
     blocks = pd.read_csv(C.DERIVED / "sample_blocks.csv.gz")
-    rows, draws = monthly_series(txs, blocks)
+    acc = pd.read_csv(C.DERIVED / "account_classes.csv.gz", low_memory=False)
+    vpath = C.DERIVED / "validation.json"
+    rates = json.loads(vpath.read_text()).get("rates_for_correction") if vpath.exists() else None
+    rows, draws = monthly_series(txs, blocks, rates)
     periods = [r["period"] for r in rows]
+    recent = I.recent_periods(periods, 6)
     res = {
         "generated_from": {"months": len(periods), "blocks": int(len(blocks)), "txs": int(len(txs)),
                            "first": periods[0], "last": periods[-1]},
         "monthly": rows,
         "forecast": trend_forecast(periods, draws),
         "concentration": concentration(txs),
+        "recent_periods": recent,
+        "hourly": I.hourly(txs, recent),
+        "receivers": I.receivers(txs, recent),
+        "methods": I.methods(txs, recent),
+        "fee_stats": I.fee_stats(txs, recent),
+        "latest_window": I.latest_window(txs, blocks, periods),
+        "windows": I.windows(txs, blocks, periods),
+        "accounts": I.accounts(txs, acc, recent),
+        "spot_check": I.spot_check(txs, acc, recent[-3:]),
     }
     (C.DERIVED / "results.json").write_text(json.dumps(jsonable(res), indent=1))
     last = rows[-1]

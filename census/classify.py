@@ -47,22 +47,22 @@ def _lt(key, v):
 
 RULES: list[Rule] = [
     # volume -- machines sign far more transactions than people do
-    Rule("lifetime_volume_very_high", 20, _ge("txs_count_total", 20_000), ">= 20k signed txs"),
-    Rule("lifetime_volume_high", 10, lambda f: _ok(f.get("txs_count_total")) and 2_000 <= f["txs_count_total"] < 20_000, "2k-20k signed txs"),
-    Rule("sustained_rate_very_high", 15, _ge("rate_per_day", 500), ">= 500 txs/day in window"),
-    Rule("sustained_rate_high", 8, lambda f: _ok(f.get("rate_per_day")) and 100 <= f["rate_per_day"] < 500, "100-500 txs/day in window"),
+    Rule("lifetime_volume_very_high", 20, _ge("txs_count_total", 20_000), "≥ 20k signed txs"),
+    Rule("lifetime_volume_high", 10, lambda f: _ok(f.get("txs_count_total")) and 2_000 <= f["txs_count_total"] < 20_000, "2k–20k signed txs"),
+    Rule("sustained_rate_very_high", 15, _ge("rate_per_day", 500), "≥ 500 txs/day in window"),
+    Rule("sustained_rate_high", 8, lambda f: _ok(f.get("rate_per_day")) and 100 <= f["rate_per_day"] < 500, "100–500 txs/day in window"),
     # timing -- machine speed and schedules
-    Rule("machine_speed_gaps", 20, _ge("fast_share", 0.5), ">= 50% of gaps <= 5 s"),
-    Rule("frequent_machine_speed_gaps", 10, lambda f: _ok(f.get("fast_share")) and 0.2 <= f["fast_share"] < 0.5, "20-50% of gaps <= 5 s"),
-    Rule("on_a_schedule", 20, _ge("periodic_share", 0.5), ">= 50% of gaps within +-10% of the median gap"),
-    Rule("partly_on_a_schedule", 10, lambda f: _ok(f.get("periodic_share")) and 0.25 <= f["periodic_share"] < 0.5, "25-50% on schedule"),
+    Rule("machine_speed_gaps", 20, _ge("fast_share", 0.5), "≥ 50% of gaps ≤ 5 s"),
+    Rule("frequent_machine_speed_gaps", 10, lambda f: _ok(f.get("fast_share")) and 0.2 <= f["fast_share"] < 0.5, "20–50% of gaps ≤ 5 s"),
+    Rule("on_a_schedule", 20, _ge("periodic_share", 0.5), "≥ 50% of gaps within ±10% of the median gap"),
+    Rule("partly_on_a_schedule", 10, lambda f: _ok(f.get("periodic_share")) and 0.25 <= f["periodic_share"] < 0.5, "25–50% on schedule"),
     # circadian -- humans sleep
-    Rule("never_rests_around_the_clock", 20, lambda f: _ok(f.get("rest_per_day")) and f["rest_per_day"] < 0.2 and _ok(f.get("hour_coverage")) and f["hour_coverage"] >= 0.9, "active in >=90% of UTC hours, almost no 5h silences"),
+    Rule("never_rests_around_the_clock", 20, lambda f: _ok(f.get("rest_per_day")) and f["rest_per_day"] < 0.2 and _ok(f.get("hour_coverage")) and f["hour_coverage"] >= 0.9, "active in ≥ 90% of UTC hours, almost no 5 h silences"),
     # call shape
     Rule("function_call_key_shape", 5, _ge("fc_key_share", 0.8), "most sampled txs are single zero-deposit FunctionCalls (function-call-key shape)"),
-    Rule("high_failure_rate", 5, _ge("fail_rate", 0.3), ">= 30% of txs fail (retrying scripts)"),
+    Rule("high_failure_rate", 5, _ge("fail_rate", 0.3), "≥ 30% of txs fail (retrying scripts)"),
     # evidence of a human
-    Rule("sleeps_every_day", -20, _ge("rest_per_day", 0.8), "a >=5 h silence nearly every day"),
+    Rule("sleeps_every_day", -20, _ge("rest_per_day", 0.8), "a ≥ 5 h silence nearly every day"),
     Rule("low_activity_rate", -10, lambda f: _ok(f.get("rate_per_day")) and f["rate_per_day"] < 5, "< 5 txs/day"),
     Rule("daytime_only_hours", -10, lambda f: _ok(f.get("hour_coverage")) and f["hour_coverage"] < 0.6, "active in < 60% of UTC hours"),
 ]

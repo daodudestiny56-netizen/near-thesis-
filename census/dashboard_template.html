@@ -4,273 +4,501 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>NEAR Agent Census</title>
-<meta name="description" content="How much of NEAR's activity is automated? A measured, re-runnable census of agent-like behaviour on NEAR.">
+<meta name="description" content="How much of NEAR's activity is software? A measured, re-runnable census with confidence intervals, a validated classifier, and a click-through way to verify every claim.">
 <style>
+/*FONT*/
 :root {
   color-scheme: light;
-  --surface: #fcfcfb; --surface-2: #f4f3f0; --line: #dcdad4; --grid: #e9e7e2;
-  --ink: #0b0b0b; --ink-2: #52514e; --ink-3: #6f6d68;
-  --auto: #2a78d6; --human: #eb6834; --paid: #1baf7a; --warn: #8a5a00;
-  --band: rgba(42,120,214,.16);
+  --bg: #f7f6f2; --surface: #ffffff; --surface-2: #f1f0ea; --line: #e0ded6; --grid: #ebe9e2;
+  --ink: #0f0f0e; --ink-2: #4b4a46; --ink-3: #6b6962;
+  --auto: #2a78d6; --human: #eb6834; --paid: #1baf7a; --neutral: #8d8b83;
+  --band: rgba(42,120,214,.14); --shadow: 0 1px 2px rgba(15,15,14,.05), 0 8px 24px rgba(15,15,14,.04);
+  --ok: #0a7a0a; --ok-bg: #e5f4e5; --bad: #b32424; --bad-bg: #fbe9e9; --warn: #8a5a00; --warn-bg: #fdf0d3; --info-bg: #ecebe5;
 }
 @media (prefers-color-scheme: dark) {
   :root:where(:not([data-theme="light"])) {
     color-scheme: dark;
-    --surface: #1a1a19; --surface-2: #232321; --line: #3a3a37; --grid: #2d2d2b;
+    --bg: #121211; --surface: #1a1a19; --surface-2: #232321; --line: #34332f; --grid: #2a2a27;
     --ink: #f0efec; --ink-2: #c3c2b7; --ink-3: #a09f95;
-    --auto: #3987e5; --human: #d95926; --paid: #199e70; --warn: #e0a64a;
-    --band: rgba(57,135,229,.22);
+    --auto: #3987e5; --human: #d95926; --paid: #199e70; --neutral: #8d8b83;
+    --band: rgba(57,135,229,.2); --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
+    --ok: #55c455; --ok-bg: #16301a; --bad: #ff8a85; --bad-bg: #3a1c1b; --warn: #e0a64a; --warn-bg: #3a2d12; --info-bg: #2a2a27;
   }
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --surface: #1a1a19; --surface-2: #232321; --line: #3a3a37; --grid: #2d2d2b;
+  --bg: #121211; --surface: #1a1a19; --surface-2: #232321; --line: #34332f; --grid: #2a2a27;
   --ink: #f0efec; --ink-2: #c3c2b7; --ink-3: #a09f95;
-  --auto: #3987e5; --human: #d95926; --paid: #199e70; --warn: #e0a64a;
-  --band: rgba(57,135,229,.22);
+  --auto: #3987e5; --human: #d95926; --paid: #199e70; --neutral: #8d8b83;
+  --band: rgba(57,135,229,.2); --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
+  --ok: #55c455; --ok-bg: #16301a; --bad: #ff8a85; --bad-bg: #3a1c1b; --warn: #e0a64a; --warn-bg: #3a2d12; --info-bg: #2a2a27;
 }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--surface); color: var(--ink); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-main { max-width: 1080px; margin: 0 auto; padding: 0 16px 64px; }
-header { padding: 40px 0 8px; }
-h1 { font-size: clamp(28px, 5vw, 44px); line-height: 1.1; margin: 0 0 10px; letter-spacing: -.02em; }
-.lede { font-size: 18px; color: var(--ink-2); max-width: 760px; margin: 0 0 8px; }
-.meta { font-size: 13px; color: var(--ink-3); }
-.meta a { color: inherit; }
-.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 24px 0 8px; }
-.tile { background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
-.tile .k { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); }
-.tile .v { font-size: 34px; font-weight: 650; letter-spacing: -.02em; line-height: 1.15; margin: 4px 0 2px; font-variant-numeric: tabular-nums; }
-.tile .s { font-size: 13px; color: var(--ink-2); }
-section.card { border-top: 1px solid var(--line); padding: 28px 0 8px; }
-h2 { font-size: 22px; margin: 0 0 6px; letter-spacing: -.01em; }
-.claim { color: var(--ink-2); margin: 0 0 12px; max-width: 820px; }
+html { scroll-behavior: smooth; scroll-padding-top: 76px; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 17px/1.6 "Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", sans-serif; font-optical-sizing: auto; -webkit-font-smoothing: antialiased; }
+a { color: inherit; text-decoration-color: var(--line); text-underline-offset: 3px; }
+a:hover { text-decoration-color: currentColor; }
+.wrap { max-width: 1160px; margin: 0 auto; padding: 0 20px; }
+code { font: 500 .85em ui-monospace, "SF Mono", Menlo, Consolas, monospace; background: var(--surface-2); padding: 1px 6px; border-radius: 5px; }
+
+nav { position: sticky; top: 0; z-index: 50; backdrop-filter: saturate(1.4) blur(14px); background: color-mix(in srgb, var(--bg) 82%, transparent); border-bottom: 1px solid var(--line); }
+nav .wrap { display: flex; align-items: center; gap: 22px; height: 60px; }
+.brand { font-weight: 700; letter-spacing: -.02em; font-size: 18px; display: flex; align-items: center; gap: 9px; text-decoration: none; white-space: nowrap; }
+.brand i { width: 22px; height: 22px; border-radius: 7px; background: conic-gradient(from 210deg, var(--auto), var(--human), var(--paid), var(--auto)); display: inline-block; }
+nav .links { display: flex; gap: 4px; overflow-x: auto; flex: 1; scrollbar-width: none; }
+nav .links a { font-size: 14.5px; font-weight: 500; color: var(--ink-2); text-decoration: none; padding: 6px 11px; border-radius: 8px; white-space: nowrap; }
+nav .links a:hover { background: var(--surface-2); color: var(--ink); }
+.btn { font: 600 13.5px "Bricolage Grotesque", sans-serif; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 9px; padding: 7px 13px; cursor: pointer; text-decoration: none; display: inline-flex; gap: 7px; align-items: center; white-space: nowrap; }
+.btn:hover { border-color: var(--ink-3); }
+.btn:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--auto); outline-offset: 2px; }
+
+.hero { padding: 54px 0 22px; display: grid; grid-template-columns: 1.15fr .85fr; gap: 40px; align-items: center; }
+.eyebrow { font-size: 13px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-3); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.pill { font-size: 12px; font-weight: 600; letter-spacing: .02em; text-transform: none; padding: 3px 10px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); color: var(--ink-2); }
+h1 { font-size: clamp(40px, 6.4vw, 76px); line-height: 1.0; margin: 16px 0 18px; letter-spacing: -.035em; font-weight: 750; }
+h1 em { font-style: normal; color: var(--auto); }
+.lede { font-size: 20px; color: var(--ink-2); max-width: 640px; margin: 0 0 22px; line-height: 1.5; }
+.cta { display: flex; gap: 10px; flex-wrap: wrap; }
+.btn.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.big { background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: 26px 28px; box-shadow: var(--shadow); }
+.big .k { font-size: 13px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+.big .n { font-size: clamp(64px, 9vw, 108px); font-weight: 750; letter-spacing: -.05em; line-height: .95; margin: 10px 0 6px; color: var(--auto); font-variant-numeric: tabular-nums; }
+.big .d { color: var(--ink-2); font-size: 16px; }
+.big .r { margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--line); font-size: 14.5px; color: var(--ink-2); display: grid; gap: 4px; }
+.big .r b { color: var(--ink); font-weight: 650; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; margin: 22px 0 6px; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; box-shadow: var(--shadow); }
+.tile .k { font-size: 12.5px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-3); }
+.tile .v { font-size: 38px; font-weight: 700; letter-spacing: -.03em; line-height: 1.1; margin: 6px 0 4px; font-variant-numeric: tabular-nums; }
+.tile .s { font-size: 14px; color: var(--ink-2); }
+.read { display: flex; gap: 14px; background: var(--warn-bg); border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent); border-radius: 14px; padding: 14px 18px; margin: 20px 0 8px; font-size: 15.5px; color: var(--ink); }
+.read svg { flex: none; margin-top: 3px; color: var(--warn); width: 20px; height: 20px; }
+
+section { padding: 52px 0 6px; }
+.sec-h { display: flex; align-items: baseline; gap: 14px; margin-bottom: 6px; }
+.sec-h .no { font-size: 13px; font-weight: 700; color: var(--ink-3); letter-spacing: .08em; }
+h2 { font-size: clamp(26px, 3.4vw, 38px); line-height: 1.1; margin: 0; letter-spacing: -.028em; font-weight: 700; }
+.take { font-size: 19px; color: var(--ink-2); max-width: 820px; margin: 10px 0 18px; line-height: 1.5; }
+.take b { color: var(--ink); font-weight: 650; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 20px 22px 14px; box-shadow: var(--shadow); margin-bottom: 14px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.grid2 > .card { margin-bottom: 0; }
+.card h3 { margin: 0 0 4px; font-size: 18px; letter-spacing: -.01em; font-weight: 650; }
+.card .sub { font-size: 14px; color: var(--ink-3); margin: 0 0 8px; }
 .chartwrap { position: relative; }
-svg { width: 100%; height: auto; display: block; overflow: visible; }
-.axis text { fill: var(--ink-3); font-size: 11px; }
+svg { width: 100%; height: auto; display: block; overflow: visible; font-family: inherit; }
+.axis text { fill: var(--ink-3); font-size: 11.5px; }
 .gridline { stroke: var(--grid); stroke-width: 1; }
-.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--ink-2); margin: 8px 0 4px; }
-.legend i { display: inline-block; width: 18px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
-.tip { position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 12.5px; box-shadow: 0 4px 16px rgba(0,0,0,.18); min-width: 170px; display: none; z-index: 5; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 20px; font-size: 14px; color: var(--ink-2); margin: 6px 0 2px; }
+.legend i { display: inline-block; width: 18px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 7px; }
+.tip { position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; font-size: 13px; box-shadow: 0 8px 28px rgba(0,0,0,.18); min-width: 190px; display: none; z-index: 5; }
 .tip b { display: block; margin-bottom: 4px; }
-.tip div { display: flex; justify-content: space-between; gap: 14px; font-variant-numeric: tabular-nums; }
-details { margin: 8px 0; font-size: 13.5px; color: var(--ink-2); }
-summary { cursor: pointer; color: var(--ink); }
-summary:focus-visible, button:focus-visible { outline: 2px solid var(--auto); outline-offset: 2px; }
-code { font: 12.5px ui-monospace, Menlo, Consolas, monospace; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
-table { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
-th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--line); }
-th { color: var(--ink-3); font-weight: 600; }
+.tip div { display: flex; justify-content: space-between; gap: 16px; font-variant-numeric: tabular-nums; }
+details { margin: 6px 0; font-size: 14.5px; color: var(--ink-2); }
+details > summary { cursor: pointer; color: var(--ink); font-weight: 550; padding: 4px 0; }
+details p { margin: 6px 0 8px; max-width: 880px; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { color: var(--ink-3); font-weight: 600; font-size: 12.5px; letter-spacing: .04em; text-transform: uppercase; }
 td.n, th.n { text-align: right; }
-.scroll { overflow-x: auto; max-height: 360px; }
-.note { background: var(--surface-2); border-left: 3px solid var(--warn); padding: 10px 14px; border-radius: 6px; font-size: 14px; color: var(--ink-2); margin: 12px 0; }
-button.toggle { background: var(--surface-2); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; font-size: 12.5px; cursor: pointer; }
-footer { border-top: 1px solid var(--line); margin-top: 36px; padding-top: 16px; font-size: 13px; color: var(--ink-3); }
+.scroll { overflow-x: auto; max-height: 440px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; letter-spacing: .04em; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+.chip.ok { background: var(--ok-bg); color: var(--ok); } .chip.bad { background: var(--bad-bg); color: var(--bad); }
+.chip.mid { background: var(--warn-bg); color: var(--warn); } .chip.info { background: var(--info-bg); color: var(--ink-2); }
+.chip.auto { background: var(--band); color: var(--auto); } .chip.hum { background: color-mix(in srgb, var(--human) 16%, transparent); color: var(--human); }
+
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
+.step { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; }
+.step .num { width: 30px; height: 30px; border-radius: 9px; background: var(--ink); color: var(--bg); display: grid; place-items: center; font-weight: 700; font-size: 14px; margin-bottom: 10px; }
+.step h4 { margin: 0 0 4px; font-size: 17px; font-weight: 650; }
+.step p { margin: 0; font-size: 14.5px; color: var(--ink-2); line-height: 1.5; }
+.step .stat { margin-top: 10px; font-size: 13px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+
+.lookup { display: flex; gap: 10px; flex-wrap: wrap; margin: 8px 0 14px; }
+.lookup input { flex: 1; min-width: 240px; font: 500 15px "Bricolage Grotesque", sans-serif; padding: 11px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+.verdict { display: grid; grid-template-columns: auto 1fr; gap: 6px 22px; font-size: 15px; }
+.verdict dt { color: var(--ink-3); } .verdict dd { margin: 0; font-variant-numeric: tabular-nums; }
+.rule { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 14.5px; }
+.rule .p { font-weight: 700; font-variant-numeric: tabular-nums; } .rule .p.pos { color: var(--auto); } .rule .p.neg { color: var(--human); }
+.muted { color: var(--ink-3); }
+footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 28px 0 56px; font-size: 14px; color: var(--ink-3); display: grid; gap: 10px; }
+@media (max-width: 860px) { .hero, .grid2 { grid-template-columns: 1fr; } nav .links { display: none; } .hero { padding-top: 34px; } nav .wrap { justify-content: space-between; } }
+@media print { nav { display: none; } .card, .tile, .big { box-shadow: none; } }
 </style>
 </head>
 <body>
-<main>
-<header>
-  <div class="meta">NEAR HACKATHON · Investment Thesis track · <span id="gen"></span></div>
-  <h1>The NEAR Agent Census</h1>
-  <p class="lede" id="lede"></p>
-  <div class="meta">Every number on this page is computed from a random sample of NEAR blocks by code in
-  <a href="https://github.com/daodudestiny56-netizen/near-thesis-">this repository</a>. Re-run it with <code>python -m census reproduce</code>. Nothing is typed in by hand.</div>
-  <div class="tiles" id="tiles"></div>
-</header>
+<nav><div class="wrap">
+  <a class="brand" href="#top"><i></i>NEAR Agent Census</a>
+  <div class="links">
+    <a href="#how">Method</a><a href="#trend">Trend</a><a href="#fees">Fees</a><a href="#finger">Fingerprint</a><a href="#work">Software at work</a><a href="#trust">Trust</a><a href="#verify">Verify</a><a href="#thesis">Thesis</a>
+  </div>
+  <button class="btn" id="theme" type="button" aria-label="Toggle dark mode">◐ Theme</button>
+  <a class="btn primary" href="https://github.com/daodudestiny56-netizen/near-thesis-" target="_blank" rel="noopener">Code ↗</a>
+</div></nav>
 
-<div class="note" id="caveat"></div>
+<main class="wrap" id="top">
+<div class="hero">
+  <div>
+    <div class="eyebrow">NEAR HACKATHON <span class="pill">Investment Thesis track</span><span class="pill" id="scope"></span></div>
+    <h1>How much of NEAR is <em>software?</em></h1>
+    <p class="lede" id="lede"></p>
+    <div class="cta"><a class="btn primary" href="#verify">Verify it yourself →</a><a class="btn" href="#thesis">Read the verdicts</a></div>
+  </div>
+  <div class="big" id="big"></div>
+</div>
+<div class="tiles" id="tiles"></div>
+<div class="read" id="caveat"></div>
 
-<section class="card" id="c-share"></section>
-<section class="card" id="c-fees"></section>
-<section class="card" id="c-shape"></section>
-<section class="card" id="c-forecast"></section>
-<section class="card" id="c-valid"></section>
-<section class="card" id="c-top"></section>
+<section id="how">
+  <div class="sec-h"><span class="no">01</span><h2>How the census works</h2></div>
+  <p class="take">NEAR makes a full crawl impractical, so the census is a <b>random sample with honest error bars</b>, not a guess. Every number below is computed by the code in this repository.</p>
+  <div class="steps" id="steps"></div>
+</section>
+
+<section id="trend">
+  <div class="sec-h"><span class="no">02</span><h2>Share of activity that is software</h2></div>
+  <p class="take" id="take-share"></p>
+  <div class="card" id="c-share"></div>
+  <div class="card" id="c-win"></div>
+</section>
+
+<section id="fees">
+  <div class="sec-h"><span class="no">03</span><h2>Who initiates, and who pays</h2></div>
+  <p class="take" id="take-fees"></p>
+  <div class="card" id="c-fees"></div>
+  <div class="card" id="c-shape"></div>
+</section>
+
+<section id="finger">
+  <div class="sec-h"><span class="no">04</span><h2>Software doesn't sleep</h2></div>
+  <p class="take" id="take-finger"></p>
+  <div class="card" id="c-hour"></div>
+</section>
+
+<section id="work">
+  <div class="sec-h"><span class="no">05</span><h2>What the software is doing</h2></div>
+  <p class="take" id="take-work"></p>
+  <div class="grid2"><div class="card" id="c-rec-a"></div><div class="card" id="c-rec-h"></div></div>
+  <div class="card" id="c-top" style="margin-top:14px"></div>
+</section>
+
+<section id="forecast">
+  <div class="sec-h"><span class="no">06</span><h2>Where the trend points</h2></div>
+  <p class="take" id="take-forecast"></p>
+  <div class="card" id="c-forecast"></div>
+</section>
+
+<section id="trust">
+  <div class="sec-h"><span class="no">07</span><h2>How far to trust the classifier</h2></div>
+  <p class="take" id="take-trust"></p>
+  <div class="card" id="c-valid"></div>
+  <div class="card" id="c-abl"></div>
+</section>
+
+<section id="verify">
+  <div class="sec-h"><span class="no">08</span><h2>Verify it yourself</h2></div>
+  <p class="take">Don't take the dashboard's word for it. Every row below is a real transaction from the sample. Click through to a public explorer, or look up any profiled account and see <b>exactly which rules produced its verdict</b>.</p>
+  <div class="card" id="c-lookup"></div>
+  <div class="card" id="c-spot"></div>
+</section>
+
+<section id="thesis">
+  <div class="sec-h"><span class="no">09</span><h2>The thesis, tested</h2></div>
+  <p class="take" id="take-thesis"></p>
+  <div class="card" id="c-claims"></div>
+  <div class="card" id="c-mind"></div>
+</section>
 
 <footer>
-  Data: <a href="https://docs.fastnear.com/tx" style="color:inherit">FastNEAR Transactions API</a>, queried live and cached.
-  Method, limits and the labelled set are documented in METHODOLOGY.md. "Automated" is a behavioural class: it includes AI agents, classic bots and infrastructure such as relayers; behaviour alone cannot separate them.
+  <div><b style="color:var(--ink)">NEAR Agent Census</b> · built for the NEAR HACKATHON, Investment Thesis track. Every figure on this page is computed from a seeded random sample of NEAR blocks by the code in this repository (<code>python -m census reproduce</code>); nothing is typed in by hand.</div>
+  <div>Data: <a href="https://docs.fastnear.com/tx" target="_blank" rel="noopener">FastNEAR Transactions API</a> and NEAR Social via public RPC. "Automated" is a behavioural class: it includes AI agents, classic bots and infrastructure such as relayers; behaviour alone cannot separate them. Not investment advice.</div>
+  <div>Typeface: Bricolage Grotesque, © The Bricolage Grotesque Project Authors, SIL Open Font License 1.1 (embedded; license in <code>census/assets/OFL.txt</code>).</div>
 </footer>
 </main>
+
 <script id="data" type="application/json">/*DATA*/</script>
 <script>
 "use strict";
 const D = JSON.parse(document.getElementById("data").textContent);
-const M = D.results.monthly, V = D.validation, F = D.results.forecast, CC = D.results.concentration;
+const R = D.results, M = R.monthly, V = D.validation || {}, F = R.forecast || {}, CC = R.concentration || {};
+const LW = (R.latest_window || {}).metrics || {}, WIN = R.windows, CLAIMS = R.claims || [], RULES = D.rules || [];
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-const pct = (x, d = 1) => (x == null || isNaN(x)) ? "n/a" : (x * 100).toFixed(d) + "%";
+const pct = (x, d = 0) => (x == null || isNaN(x)) ? "n/a" : (x * 100).toFixed(d) + "%";
+const pts = (x, d = 1) => (x == null || isNaN(x)) ? "n/a" : (x >= 0 ? "+" : "") + (x * 100).toFixed(d) + " pts";
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const short = (a, n = 28) => a.length > n ? a.slice(0, 13) + "…" + a.slice(-9) : a;
 const last = M[M.length - 1];
 const NS = "http://www.w3.org/2000/svg";
 const el = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; };
+const $ = id => document.getElementById(id);
+const T = V.test || {};
+const span = (R.latest_window || {}).periods || [last.period];
+const spanTxt = span.length > 1 ? `${span[0]} → ${span[span.length - 1]}` : span[0];
+const gen = R.generated_from;
 
-function section(id, title, claim, how) {
-  const s = document.getElementById(id);
-  s.innerHTML = `<h2>${title}</h2><p class="claim">${claim}</p><div class="legend" data-legend></div>
+(() => { try { const t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {} })();
+$("theme").onclick = () => {
+  const dark = (document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")) === "dark";
+  document.documentElement.dataset.theme = dark ? "light" : "dark";
+  try { localStorage.setItem("theme", document.documentElement.dataset.theme); } catch (e) {}
+  location.reload();
+};
+
+function card(id, title, sub, how) {
+  const s = $(id);
+  s.innerHTML = `${title ? `<h3>${title}</h3>` : ""}${sub ? `<p class="sub">${sub}</p>` : ""}<div class="legend" data-legend></div>
     <div class="chartwrap"><div data-chart></div><div class="tip" data-tip></div></div>
-    <details><summary>How this is computed</summary><p>${how}</p></details>
+    ${how ? `<details><summary>How this is computed</summary><p>${how}</p></details>` : ""}
     <details><summary>Table view</summary><div class="scroll" data-table></div></details>`;
   return { chart: s.querySelector("[data-chart]"), tip: s.querySelector("[data-tip]"), legend: s.querySelector("[data-legend]"), table: s.querySelector("[data-table]") };
 }
 
-/* generic multi-line chart with optional CI band, hover crosshair and legend */
-function lineChart(host, { x, series, yMax, yFmt = pct, height = 300, vlines = [] }) {
-  const W = 980, H = height, m = { l: 48, r: 16, t: 10, b: 28 };
+function lineChart(host, { x, series, yMax, yFmt = pct, height = 320, xLabels }) {
+  const W = 1000, H = height, m = { l: 52, r: 18, t: 12, b: 30 };
   const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": series.map(s => s.name).join(", ") });
   const iw = W - m.l - m.r, ih = H - m.t - m.b;
-  const ymax = yMax ?? Math.max(...series.flatMap(s => (s.hi || s.values).filter(v => v != null)), 0.01) * 1.08;
+  const raw = Math.max(...series.flatMap(s => (s.hi || s.values).filter(v => v != null)), 0.01) * 1.05;
+  const nice = v => { for (const st of [.005, .01, .02, .05, .1, .2, .25, .5, 1]) if (v / st <= 5) return { max: Math.ceil(v / st) * st, n: Math.ceil(v / st) }; return { max: 1, n: 4 }; };
+  const sc = yMax ? { max: yMax, n: 5 } : nice(raw), ymax = sc.max;
   const X = i => m.l + (x.length === 1 ? iw / 2 : i * iw / (x.length - 1)), Y = v => m.t + ih - (Math.min(v, ymax) / ymax) * ih;
-  const ticks = 5;
-  for (let t = 0; t <= ticks; t++) {
-    const v = ymax * t / ticks;
+  for (let t = 0; t <= sc.n; t++) {
+    const v = ymax * t / sc.n;
     el("line", { x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v), class: "gridline" }, svg);
-    const g = el("g", { class: "axis" }, svg); const tx = el("text", { x: m.l - 8, y: Y(v) + 4, "text-anchor": "end" }, g); tx.textContent = yFmt(v, 0);
+    const g = el("g", { class: "axis" }, svg); el("text", { x: m.l - 9, y: Y(v) + 4, "text-anchor": "end" }, g).textContent = yFmt(v, 0);
   }
-  const step = Math.ceil(x.length / 9);
-  x.forEach((p, i) => { if (i % step === 0 || i === x.length - 1) { const g = el("g", { class: "axis" }, svg); const tx = el("text", { x: X(i), y: H - 8, "text-anchor": "middle" }, g); tx.textContent = p; } });
-  vlines.forEach(v => { const i = x.indexOf(v.at); if (i >= 0) { el("line", { x1: X(i), x2: X(i), y1: m.t, y2: m.t + ih, stroke: css("--ink-3"), "stroke-dasharray": "3 4" }, svg); const t = el("text", { x: X(i) + 4, y: m.t + 12, fill: css("--ink-3"), "font-size": 11 }, svg); t.textContent = v.label; } });
+  const step = Math.max(1, Math.ceil(x.length / 10));
+  x.forEach((p, i) => { if (i % step === 0 || i === x.length - 1) { const g = el("g", { class: "axis" }, svg); el("text", { x: X(i), y: H - 8, "text-anchor": i === x.length - 1 ? "end" : i === 0 ? "start" : "middle" }, g).textContent = xLabels ? xLabels(p) : p; } });
   series.forEach(s => {
     if (s.lo && s.hi) {
-      let d = "", pts = [];
+      const pts = [];
       x.forEach((_, i) => { if (s.hi[i] != null) pts.push([X(i), Y(s.hi[i])]); });
       for (let i = x.length - 1; i >= 0; i--) if (s.lo[i] != null) pts.push([X(i), Y(s.lo[i])]);
       el("polygon", { points: pts.map(p => p.join(",")).join(" "), fill: s.band || css("--band"), stroke: "none" }, svg);
     }
-    let path = ""; s.values.forEach((v, i) => { if (v != null) path += (path ? "L" : "M") + X(i) + " " + Y(v); });
-    el("path", { d: path, fill: "none", stroke: css(s.color), "stroke-width": 2, "stroke-linejoin": "round", "stroke-dasharray": s.dash || "" }, svg);
-    if (x.length <= 40) s.values.forEach((v, i) => { if (v != null) el("circle", { cx: X(i), cy: Y(v), r: 3, fill: css(s.color), stroke: css("--surface"), "stroke-width": 2 }, svg); });
+    let path = ""; s.values.forEach((v, i) => { if (v != null) path += (path ? "L" : "M") + X(i).toFixed(1) + " " + Y(v).toFixed(1); });
+    el("path", { d: path, fill: "none", stroke: css(s.color), "stroke-width": s.w || 2.4, "stroke-linejoin": "round", "stroke-linecap": "round", "stroke-dasharray": s.dash || "" }, svg);
+    if (x.length <= 48 && !s.nodots) s.values.forEach((v, i) => { if (v != null) el("circle", { cx: X(i), cy: Y(v), r: 3.2, fill: css(s.color), stroke: css("--surface"), "stroke-width": 2 }, svg); });
   });
   const cross = el("line", { y1: m.t, y2: m.t + ih, stroke: css("--ink-3"), "stroke-width": 1, visibility: "hidden" }, svg);
   const hit = el("rect", { x: m.l, y: m.t, width: iw, height: ih, fill: "transparent" }, svg);
   host.chart.appendChild(svg);
-  host.legend.innerHTML = series.map(s => `<span><i style="background:${css(s.color)};${s.dash ? "opacity:.7" : ""}"></i>${s.name}</span>`).join("");
+  host.legend.innerHTML = series.map(s => `<span><i style="background:${css(s.color)};${s.dash ? "opacity:.65" : ""}"></i>${s.name}</span>`).join("");
   const tip = host.tip;
-  const move = ev => {
+  hit.addEventListener("pointermove", ev => {
     const r = svg.getBoundingClientRect(), px = (ev.clientX - r.left) / r.width * W;
     const i = Math.max(0, Math.min(x.length - 1, Math.round((px - m.l) / iw * (x.length - 1))));
     cross.setAttribute("x1", X(i)); cross.setAttribute("x2", X(i)); cross.setAttribute("visibility", "visible");
     tip.style.display = "block";
-    tip.innerHTML = `<b>${x[i]}</b>` + series.map(s => `<div><span style="color:var(--ink-2)">${s.name}</span><span>${s.values[i] == null ? "n/a" : yFmt(s.values[i])}${s.lo && s.lo[i] != null ? ` <span style="color:var(--ink-3)">(${yFmt(s.lo[i])}–${yFmt(s.hi[i])})</span>` : ""}</span></div>`).join("");
+    tip.innerHTML = `<b>${xLabels ? xLabels(x[i]) : x[i]}</b>` + series.map(s => `<div><span style="color:var(--ink-2)">${s.name}</span><span>${s.values[i] == null ? "n/a" : yFmt(s.values[i], 1)}${s.lo && s.lo[i] != null ? ` <span style="color:var(--ink-3)">(${yFmt(s.lo[i], 0)}–${yFmt(s.hi[i], 0)})</span>` : ""}</span></div>`).join("");
     const wrap = host.chart.parentElement.getBoundingClientRect();
-    let left = ev.clientX - wrap.left + 14; if (left > wrap.width - 200) left -= 230;
-    tip.style.left = left + "px"; tip.style.top = Math.max(0, ev.clientY - wrap.top - 30) + "px";
-  };
-  hit.addEventListener("pointermove", move);
+    let left = ev.clientX - wrap.left + 16; if (left > wrap.width - 230) left -= 250;
+    tip.style.left = left + "px"; tip.style.top = Math.max(0, ev.clientY - wrap.top - 36) + "px";
+  });
   hit.addEventListener("pointerleave", () => { tip.style.display = "none"; cross.setAttribute("visibility", "hidden"); });
-  host.table.innerHTML = `<table><thead><tr><th>Month</th>${series.map(s => `<th class="n">${s.name}</th>`).join("")}</tr></thead><tbody>` +
-    x.map((p, i) => `<tr><td>${p}</td>${series.map(s => `<td class="n">${s.values[i] == null ? "" : yFmt(s.values[i])}${s.lo && s.lo[i] != null ? ` (${yFmt(s.lo[i])}–${yFmt(s.hi[i])})` : ""}</td>`).join("")}</tr>`).join("") + `</tbody></table>`;
+  host.table.innerHTML = `<table><thead><tr><th>${xLabels ? "Hour (UTC)" : "Month"}</th>${series.map(s => `<th class="n">${s.name}</th>`).join("")}</tr></thead><tbody>` +
+    x.map((p, i) => `<tr><td>${xLabels ? xLabels(p) : p}</td>${series.map(s => `<td class="n">${s.values[i] == null ? "" : yFmt(s.values[i], 1)}${s.lo && s.lo[i] != null ? ` (${yFmt(s.lo[i], 1)}–${yFmt(s.hi[i], 1)})` : ""}</td>`).join("")}</tr>`).join("") + `</tbody></table>`;
 }
 
-/* horizontal bars with optional whiskers */
-function barChart(host, rows, { fmt = pct, max = 1, zero = 0 }) {
-  const W = 980, rh = 34, H = rows.length * rh + 20, m = { l: 300, r: 60, t: 6 };
+function barChart(host, rows, { fmt = pct, min = 0, max = 1, labelW = 290, rowH = 36 }) {
+  const W = 1000, H = rows.length * rowH + 16, m = { l: labelW, r: 90, t: 4 };
   const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img" });
-  const X = v => m.l + (v - zero) / (max - zero) * (W - m.l - m.r);
+  const X = v => m.l + (v - min) / (max - min) * (W - m.l - m.r);
+  const base = min < 0 ? 0 : min;
+  if (min < 0) el("line", { x1: X(0), x2: X(0), y1: 0, y2: H - 10, stroke: css("--ink-3"), "stroke-width": 1.2 }, svg);
   rows.forEach((r, i) => {
-    const y = m.t + i * rh;
-    const t = el("text", { x: m.l - 10, y: y + 17, "text-anchor": "end", fill: css("--ink-2"), "font-size": 12.5 }, svg); t.textContent = r.label;
-    if (r.value != null && !isNaN(r.value)) {
-      const x0 = X(Math.min(zero, r.value)), x1 = X(Math.max(zero, r.value));
-      el("rect", { x: x0, y: y + 5, width: Math.max(2, x1 - x0), height: 18, rx: 4, fill: css(r.color || "--auto") }, svg);
-      if (r.lo != null) { el("line", { x1: X(r.lo), x2: X(r.hi), y1: y + 14, y2: y + 14, stroke: css("--ink"), "stroke-width": 1.5 }, svg); el("line", { x1: X(r.lo), x2: X(r.lo), y1: y + 9, y2: y + 19, stroke: css("--ink"), "stroke-width": 1.5 }, svg); el("line", { x1: X(r.hi), x2: X(r.hi), y1: y + 9, y2: y + 19, stroke: css("--ink"), "stroke-width": 1.5 }, svg); }
-      const v = el("text", { x: X(r.hi ?? Math.max(zero, r.value)) + 8, y: y + 18, fill: css("--ink"), "font-size": 12.5 }, svg); v.textContent = fmt(r.value);
+    const y = m.t + i * rowH;
+    el("text", { x: m.l - 12, y: y + 20, "text-anchor": "end", fill: css("--ink-2"), "font-size": 14 }, svg).textContent = r.label;
+    if (r.value == null || isNaN(r.value)) return;
+    const x0 = X(Math.min(base, r.value)), x1 = X(Math.max(base, r.value));
+    el("rect", { x: x0, y: y + 6, width: Math.max(3, x1 - x0), height: 20, rx: 5, fill: css(r.color || "--auto") }, svg);
+    if (r.lo != null && r.hi != null) {
+      [[r.lo, r.hi, 0], [r.lo, r.lo, 1], [r.hi, r.hi, 1]].forEach(([a, b, cap]) => el("line", { x1: X(a), x2: X(b), y1: cap ? y + 10 : y + 16, y2: cap ? y + 22 : y + 16, stroke: css("--ink"), "stroke-width": 1.6 }, svg));
     }
+    el("text", { x: X(Math.max(r.hi ?? r.value, r.value)) + 10, y: y + 21, fill: css("--ink"), "font-size": 14, "font-weight": 600 }, svg).textContent = fmt(r.value);
   });
   host.chart.appendChild(svg);
   host.table.innerHTML = `<table><thead><tr><th>Item</th><th class="n">Value</th><th class="n">95% CI</th></tr></thead><tbody>` +
-    rows.map(r => `<tr><td>${r.label}</td><td class="n">${fmt(r.value)}</td><td class="n">${r.lo != null ? fmt(r.lo) + "–" + fmt(r.hi) : ""}</td></tr>`).join("") + `</tbody></table>`;
+    rows.map(r => `<tr><td>${esc(r.label)}</td><td class="n">${fmt(r.value)}</td><td class="n">${r.lo != null ? fmt(r.lo) + " to " + fmt(r.hi) : ""}</td></tr>`).join("") + `</tbody></table>`;
 }
 
-const x = M.map(r => r.period);
-const col = k => M.map(r => r[k] ?? null);
+const x = M.map(r => r.period), col = k => M.map(r => r[k] ?? null);
+const chip = v => ({ supported: ["ok", "✓ SUPPORTED"], not_supported: ["bad", "✕ NOT SUPPORTED"], inconclusive: ["mid", "◐ INCONCLUSIVE"], info: ["info", "• DESCRIPTIVE"] }[v] || ["info", v]);
 
-/* header */
-document.getElementById("gen").textContent = `${D.results.generated_from.months} months, ${D.results.generated_from.blocks.toLocaleString()} sampled blocks, ${D.results.generated_from.txs.toLocaleString()} transactions`;
-document.getElementById("lede").textContent = `Is NEAR becoming the chain that software lives on? In ${last.period}, accounts behaving like software initiated ${pct(last.tx_auto, 0)} of the transactions we sampled (95% CI ${pct(last.tx_auto_lo, 0)}–${pct(last.tx_auto_hi, 0)}). Here is how that has moved, who pays the fees, and how far we trust the classifier.`;
-const T = V.test || {};
-document.getElementById("tiles").innerHTML = [
-  ["Automated share of transactions", pct(last.tx_auto), `${last.period} · 95% CI ${pct(last.tx_auto_lo)}–${pct(last.tx_auto_hi)}`],
-  ["Fees initiated by automated accounts", pct(last.fee_init_auto), `${last.period} · 95% CI ${pct(last.fee_init_auto_lo)}–${pct(last.fee_init_auto_hi)}`],
-  ["Fees paid by automated accounts", pct(last.fee_paid_auto), "includes relayers paying for human users"],
-  ["Classifier balanced accuracy", pct(T.balanced_accuracy, 0), `held-out test split, n=${T.n_classified ?? "?"} labelled accounts`],
+/* hero */
+const lwA = LW.tx_auto, lwLo = LW.tx_auto_t60, lwHi = LW.tx_auto_t40;
+$("scope").textContent = `${gen.months} months · ${gen.blocks.toLocaleString()} blocks · ${gen.txs.toLocaleString()} txs`;
+$("lede").textContent = `A random-sample census of NEAR: what share of transactions and fees come from accounts that behave like software, whether that is rising, and how far you should trust the measurement. Evidence, not conviction.`;
+$("big").innerHTML = lwA ? `<div class="k">Initiated by software · ${spanTxt}</div><div class="n">${pct(lwA.point)}</div>
+  <div class="d">of sampled NEAR transactions</div>
+  <div class="r"><div>95% sampling interval: <b>${pct(lwA.lo)}–${pct(lwA.hi)}</b></div>
+  <div>Across classifier cut-offs 60→40: <b>${pct(lwLo?.point)}–${pct(lwHi?.point)}</b></div>
+  <div>Unclassified (too little history): <b>${pct(LW.tx_low?.point, 1)}</b></div></div>` : `<div class="k">No data</div>`;
+$("tiles").innerHTML = [
+  ["Fees initiated by software", pct(LW.fee_init_auto?.point), `CI ${pct(LW.fee_init_auto?.lo)}–${pct(LW.fee_init_auto?.hi)} · ${spanTxt}`],
+  ["Fees paid by software accounts", pct(LW.fee_paid_auto?.point), `CI ${pct(LW.fee_paid_auto?.lo)}–${pct(LW.fee_paid_auto?.hi)} · relayers pay for users`],
+  ["Relayed (meta-)transactions", pct(LW.relayed?.point), `a relayer signed, a user initiated · ${spanTxt}`],
+  ["Classifier balanced accuracy", T.balanced_accuracy != null ? pct(T.balanced_accuracy) : "pending", T.n_classified ? `held-out test split · ${T.n_classified} labelled accounts` : "validation labels not built yet"],
 ].map(t => `<div class="tile"><div class="k">${t[0]}</div><div class="v">${t[1]}</div><div class="s">${t[2]}</div></div>`).join("");
-document.getElementById("caveat").innerHTML = `<b>Read this first.</b> "Automated" means <i>behaves like software</i>: it includes AI agents, classic trading and keeper bots, oracles and relayers. Behaviour cannot tell an LLM agent from a cron job, so this is an upper-level measure of agent activity, not a headcount of AI agents. Accounts with too little history to judge (${pct(last.tx_low)} of ${last.period} transactions) are left unclassified and shown as a bound.`;
+$("caveat").innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+  <div><b>Read this first.</b> "Software" means <i>behaves like software</i>: AI agents, trading and keeper bots, oracles and relayers all count, and behaviour cannot tell an LLM agent from a cron job. This is an upper-level proxy for agent activity, not a headcount of AI agents. The result is also sensitive to where the classifier's cut-off sits, so it is shown as a range.</div>`;
 
-/* 1 share */
+/* how it works */
+$("steps").innerHTML = [
+  ["Sample", "45 blocks per month are drawn uniformly at random (seeded), so every transaction has an equal chance of being picked.", `${gen.blocks.toLocaleString()} blocks · ${gen.txs.toLocaleString()} transactions`],
+  ["Profile", "Each initiator (resolving relayed transactions to the real user) is profiled from its last 200 signed transactions: timing, rest, volume, failures.", "behaviour only: no names, no off-chain data"],
+  ["Classify", "A transparent rule list scores each account 0–100. Too little history means 'unclassified', never silently 'human'.", `${RULES.length} named rules, each ablated in the validation`],
+  ["Measure", "Shares of transactions and fees, with cluster-bootstrap 95% intervals over blocks, plus a held-out accuracy test.", "1,000 bootstrap resamples, fixed seed"],
+].map((s, i) => `<div class="step"><div class="num">${i + 1}</div><h4>${s[0]}</h4><p>${s[1]}</p><div class="stat">${s[2]}</div></div>`).join("");
+
+/* 02 share */
+$("take-share").innerHTML = lwA ? `Over ${spanTxt}, <b>${pct(lwA.point)}</b> of sampled transactions were initiated by accounts that behave like software (95% interval ${pct(lwA.lo)}–${pct(lwA.hi)}). Move the cut-off and it ranges from <b>${pct(lwLo?.point)}</b> (strict) to <b>${pct(lwHi?.point)}</b> (lenient): the borderline accounts are a real share of the answer, so they are not hidden.` : "";
 {
-  const h = section("c-share", "Automated accounts initiate most sampled activity",
-    `In ${last.period}, ${pct(last.tx_auto)} of sampled transactions were initiated by accounts classified as automated; the upper bound, if every unclassified low-activity account were also a bot, is ${pct(last.tx_auto_upper)}. The shaded band is the 95% sampling interval.`,
-    `For each month, 45 blocks are drawn uniformly at random; every transaction's <i>real</i> signer (meta-transactions resolved to the user, not the relayer) is classified from its own last 200 signed transactions. Share = automated txs ÷ all txs over the sampled blocks; the interval is a cluster bootstrap over blocks (<code>census/analyze.py: monthly_series</code>, 1000 resamples).`);
+  const h = card("c-share", "Automated share of transactions over time", "Monthly estimate with 95% interval, the 3-month pooled estimate, and the strict and lenient cut-offs.",
+    `Each month: 45 random blocks; every transaction's real signer is classified from its own history; share = automated txs ÷ all txs over the sampled blocks; the interval is a cluster bootstrap over blocks (<code>census/analyze.py: monthly_series</code>). The 3-month line pools three months of blocks for a tighter estimate. Before 2024 only one month per quarter is sampled.`);
   lineChart(h, { x, yMax: 1, series: [
-    { name: "Automated (point estimate, 95% CI)", values: col("tx_auto"), lo: col("tx_auto_lo"), hi: col("tx_auto_hi"), color: "--auto" },
-    { name: "Upper bound (low-activity counted as automated)", values: col("tx_auto_upper"), color: "--auto", dash: "5 5" },
-    { name: "Human-like", values: col("tx_human"), color: "--human" },
+    { name: "Monthly (95% interval)", values: col("tx_auto"), lo: col("tx_auto_lo"), hi: col("tx_auto_hi"), color: "--auto", w: 1.6 },
+    { name: "3-month pooled", values: col("tx_auto_r3"), color: "--auto", w: 3.4, nodots: true },
+    { name: "Strict cut-off (60)", values: col("tx_auto_t60"), color: "--neutral", dash: "5 5", w: 1.6, nodots: true },
+    { name: "Lenient cut-off (40)", values: col("tx_auto_t40"), color: "--neutral", dash: "2 4", w: 1.6, nodots: true },
   ]});
 }
-/* 2 fees */
 {
-  const h = section("c-fees", "Who pays the fees is a different question from who initiates them",
-    `In ${last.period}, automated accounts initiated ${pct(last.fee_init_auto)} of fees (tokens burnt) but on-chain fee payers classified as automated paid ${pct(last.fee_paid_auto)}: the gap is relayers paying gas for users via meta-transactions (NEP-366).`,
-    `Fee = the indexer's per-transaction <code>tokens_burnt</code> for each sampled transaction. <i>Initiated</i> classifies the real signer; <i>paid</i> classifies the account that signed the on-chain transaction (the relayer for meta-transactions). The protocol changed in v87: before it contracts received 30% of burnt gas, after it all is burned (docs.near.org/protocol/transactions/gas), so fee levels are not comparable across that boundary; shares are.`);
+  const h = card("c-win", "Is it rising? First window vs latest window", WIN ? `Pooled ${WIN.a[0]}–${WIN.a[WIN.a.length - 1]} compared with ${WIN.b[0]}–${WIN.b[WIN.b.length - 1]}; bars are the difference with its 95% interval. An interval crossing zero means the data cannot tell.` : "Needs at least 12 densely sampled months.",
+    "Difference of pooled ratios between the first and last six dense months, bootstrapped over blocks in each window (<code>census/insights.py: windows</code>). A bar whose interval excludes zero is a detectable change.");
+  if (WIN) {
+    const nm = { tx_auto: "Automated share of transactions", fee_init_auto: "Automated share of fees (initiated)", fee_paid_auto: "Automated share of fees (paid)", relayed: "Relayed share", to_intents: "Share addressed to intents.near" };
+    const rows = Object.entries(WIN.metrics).map(([k, v]) => ({ label: nm[k] || k, value: v.diff, lo: v.diff_lo, hi: v.diff_hi, color: v.diff_lo > 0 ? "--auto" : v.diff_hi < 0 ? "--human" : "--neutral" }));
+    const ext = Math.max(0.05, ...rows.map(r => Math.max(Math.abs(r.lo), Math.abs(r.hi)))) * 1.15;
+    barChart(h, rows, { fmt: v => pts(v), min: -ext, max: ext, labelW: 300 });
+    h.legend.innerHTML = `<span><i style="background:${css("--auto")}"></i>significantly up</span><span><i style="background:${css("--human")}"></i>significantly down</span><span><i style="background:${css("--neutral")}"></i>cannot tell</span>`;
+  } else { h.chart.innerHTML = `<p class="muted">Not enough dense months to compare two windows.</p>`; }
+}
+
+/* 03 fees */
+$("take-fees").innerHTML = (LW.fee_init_auto && LW.fee_paid_auto) ? `Over ${spanTxt}, software initiated <b>${pct(LW.fee_init_auto.point)}</b> of fees, and software-classified accounts <i>paid</i> <b>${pct(LW.fee_paid_auto.point)}</b>. On NEAR, relayers sign and pay for transactions that users author (NEP-366), so "who acts" and "who pays" are different questions. ${pct(LW.relayed?.point)} of sampled transactions were relayed.` : "";
+{
+  const h = card("c-fees", "Fees initiated vs fees paid by automated accounts", "Share of fees (tokens burnt) over time.",
+    `Fee = the indexer's per-transaction <code>tokens_burnt</code> (in a 6-transaction cross-check about 88% of the full receipt-tree sum; shares are used for that reason). <i>Initiated</i> classifies the real signer; <i>paid</i> classifies the on-chain signer, i.e. the relayer for relayed transactions. Protocol v87 changed burning (contracts previously received 30% of burnt gas, now all of it is burned), so fee <i>levels</i> are not comparable across it.`);
   lineChart(h, { x, yMax: 1, series: [
-    { name: "Fees initiated by automated accounts (95% CI)", values: col("fee_init_auto"), lo: col("fee_init_auto_lo"), hi: col("fee_init_auto_hi"), color: "--auto" },
-    { name: "Fees paid by automated accounts", values: col("fee_paid_auto"), color: "--paid" },
+    { name: "Initiated by automated (95% interval)", values: col("fee_init_auto"), lo: col("fee_init_auto_lo"), hi: col("fee_init_auto_hi"), color: "--auto", w: 2 },
+    { name: "Paid by automated accounts", values: col("fee_paid_auto"), color: "--paid", w: 2 },
   ]});
 }
-/* 3 shape */
 {
-  const h = section("c-shape", "Relayed and intents-bound transactions",
-    `${pct(last.relayed)} of ${last.period} sampled transactions were relayed (a relayer signed, a user initiated) and ${pct(last.to_intents, 2)} were addressed to <code>intents.near</code>.`,
-    `Relayed = the indexer's <code>is_relayed</code> flag. Intents = transactions whose receiver is the NEAR Intents contract; this is a lower bound on intents involvement (it misses deposits routed through token contracts).`);
+  const h = card("c-shape", "Relayed transactions and NEAR Intents traffic", "Shares of all sampled transactions.",
+    `Relayed = the indexer's <code>is_relayed</code> flag. Intents = transactions whose receiver is <code>intents.near</code>; a lower bound on intents involvement (deposits routed through token contracts are not counted).`);
   lineChart(h, { x, series: [
-    { name: "Relayed (meta-transaction) share", values: col("relayed"), lo: col("relayed_lo"), hi: col("relayed_hi"), color: "--paid", band: "rgba(27,175,122,.16)" },
-    { name: "Share addressed to intents.near", values: col("to_intents"), color: "--human" },
+    { name: "Relayed share (95% interval)", values: col("relayed"), lo: col("relayed_lo"), hi: col("relayed_hi"), color: "--paid", band: "rgba(27,175,122,.14)", w: 2 },
+    { name: "Addressed to intents.near", values: col("to_intents"), color: "--human", w: 2 },
   ]});
 }
-/* 4 forecast */
+
+/* 04 fingerprint */
+const HR = R.hourly || {};
+if (HR.automated && HR.human && HR.automated.n && HR.human.n) {
+  const A = HR.automated, H = HR.human;
+  $("take-finger").innerHTML = `People have a day; software mostly doesn't. Pooling ${HR.periods[0]}–${HR.periods[HR.periods.length - 1]}, human-like accounts' busiest hour carries <b>${(H.peak_to_trough ?? NaN).toFixed(1)}×</b> the traffic of their quietest, against <b>${(A.peak_to_trough ?? NaN).toFixed(1)}×</b> for automated accounts. The classifier uses each account's own rest pattern, so this chart is the network-wide echo of it, not an independent test.`;
+  const h = card("c-hour", "Share of each class's transactions by UTC hour", `${A.n.toLocaleString()} automated and ${H.n.toLocaleString()} human-like sampled transactions.`,
+    `Hour of day of each sampled transaction's block time (UTC), split by the initiator's class (<code>census/insights.py: hourly</code>). People are spread across time zones, which blurs the human curve; a flatter line means less daily rhythm.`);
+  lineChart(h, { x: [...Array(24).keys()], series: [
+    { name: "Automated", values: A.share, color: "--auto", w: 2.6 },
+    { name: "Human-like", values: H.share, color: "--human", w: 2.6 },
+  ], xLabels: v => String(v).padStart(2, "0") + ":00", height: 300 });
+} else { $("take-finger").textContent = "Not enough classified transactions to draw the hourly profile."; $("c-hour").remove(); }
+
+/* 05 work */
+const RC = R.receivers || {};
+$("take-work").innerHTML = RC.automated && RC.automated.length ? `What do software-initiated transactions call? Over ${RC.periods[0]}–${RC.periods[RC.periods.length - 1]} the most-called receiver is <b><code>${esc(RC.automated[0].receiver)}</code></b> (${pct(RC.automated[0].tx_share)} of automated transactions). Account ids are shown exactly as they appear on chain; they are not interpreted here.` : "";
+["a", "h"].forEach(k => {
+  const key = k === "a" ? "automated" : "human";
+  const rows = (RC[key] || []).slice(0, 10);
+  const h = card("c-rec-" + k, k === "a" ? "Automated: most-called receivers" : "Human-like: most-called receivers", `Share of that class's sampled transactions · n=${(RC[key + "_n"] || 0).toLocaleString()}`, "Receiver of each sampled transaction, grouped by the initiator's class (<code>census/insights.py: receivers</code>).");
+  const max = Math.max(0.05, ...rows.map(r => r.tx_share)) * 1.15;
+  barChart(h, rows.map(r => ({ label: short(r.receiver, 24), value: r.tx_share, color: k === "a" ? "--auto" : "--human" })), { max, labelW: 210, rowH: 32 });
+});
 {
-  if (F && F.horizon) {
-    const fx = x.concat(F.horizon), n = x.length;
-    const hist = col("tx_auto").concat(F.horizon.map(() => null));
-    const proj = fx.map((_, i) => i < n - 1 ? null : i === n - 1 ? last.tx_auto : F.share_p50[i - n]);
-    const lo = fx.map((_, i) => i < n ? null : F.share_lo[i - n]), hi = fx.map((_, i) => i < n ? null : F.share_hi[i - n]);
-    const h = section("c-forecast", "Where the trend points, and how little that proves",
-      `Extrapolating the logit-linear trend of the last ${F.fit_months.length} months gives a median ${pct(F.share_p50[F.share_p50.length - 1], 0)} automated share by ${F.horizon[F.horizon.length - 1]} (95% band ${pct(F.share_lo[F.share_lo.length - 1], 0)}–${pct(F.share_hi[F.share_hi.length - 1], 0)}). The measured slope is positive in ${pct(F.prob_slope_positive, 0)} of bootstrap replicates.`,
-      `Each bootstrap replicate fits a line to logit(share) over the fit window and projects ${F.horizon.length} months (<code>census/analyze.py: trend_forecast</code>). The band reflects sampling noise only: it is <b>not</b> a prediction and ignores regime change, new protocols and shifts in how bots behave.`);
-    lineChart(h, { x: fx, yMax: 1, series: [
-      { name: "Measured", values: hist, color: "--auto" },
-      { name: "Trend extrapolation (median, 95% band)", values: proj, lo, hi, color: "--auto", dash: "5 5" },
-    ]});
-  } else document.getElementById("c-forecast").innerHTML = "<h2>Forecast</h2><p class='claim'>Not enough months to fit a trend.</p>";
-}
-/* 5 validation */
-{
-  const h = section("c-valid", "How far to trust the classifier",
-    `On the held-out test split the classifier finds ${pct(T.recall_automated, 0)} of labelled automated accounts and ${pct(T.recall_human, 0)} of labelled humans, abstaining on ${pct(1 - (T.coverage ?? 0), 0)} (too little history). Labels are biased towards self-declared bots and engaged humans, so treat this as an optimistic ceiling.`,
-    `Labels come from evidence the classifier never sees: NEAR Social profiles for humans, self-declared roles in account ids for bots (<code>census/labels.py</code>). Intervals are Wilson 95%. The split is fixed by a hash of the account id; thresholds were set on the dev split only (<code>census/validate.py</code>).`);
-  const ci = (v, c) => c ? { lo: c[0], hi: c[1] } : {};
-  barChart(h, [
-    { label: "Recall: automated accounts found", value: T.recall_automated, ...ci(0, T.recall_automated_ci), color: "--auto" },
-    { label: "Recall: human accounts kept human", value: T.recall_human, ...ci(0, T.recall_human_ci), color: "--human" },
-    { label: "Precision of the automated verdict", value: T.precision_automated, ...ci(0, T.precision_automated_ci), color: "--auto" },
-    { label: "Overall accuracy on classified", value: T.accuracy, ...ci(0, T.accuracy_ci), color: "--paid" },
-  ], {});
-  const ab = V.ablation_test_balanced_accuracy || {}, base = ab.all_rules;
-  const rows = Object.entries(ab).filter(([k]) => k.startsWith("without:")).map(([k, v]) => ({ label: "without " + k.slice(8), value: v - base })).sort((a, b) => a.value - b.value);
-  const d = document.createElement("div"); d.style.marginTop = "18px";
-  d.innerHTML = `<p class="claim"><b>What each rule contributes.</b> Change in test balanced accuracy when one rule is removed (negative = the rule was helping).</p>`;
-  h.chart.appendChild(d);
-  const host2 = { chart: d, table: document.createElement("div") };
-  barChart(host2, rows, { fmt: v => (v >= 0 ? "+" : "") + (v * 100).toFixed(1) + " pts", max: Math.max(0.05, ...rows.map(r => r.value)), zero: Math.min(-0.05, ...rows.map(r => r.value)) });
-}
-/* 6 who */
-{
-  const s = document.getElementById("c-top");
-  s.innerHTML = `<h2>Who the automated accounts are</h2><p class="claim">${CC.accounts_for_half_of_automated_txs} accounts produce half of all automated transactions sampled in ${CC.periods[0]}–${CC.periods[CC.periods.length - 1]}; automated activity is concentrated, not diffuse.</p>
+  const s = $("c-top");
+  s.innerHTML = `<h3>The automated accounts that matter most</h3><p class="sub">${CC.accounts_for_half_of_automated_txs ?? "?"} of ${CC.automated_accounts_in_sample ?? "?"} automated accounts produce half of all automated transactions (${(CC.periods || [""])[0]}–${(CC.periods || [""]).slice(-1)[0]}). Click a name to see why it was classified.</p>
   <div class="scroll"><table><thead><tr><th>Account</th><th class="n">Share of all txs</th><th class="n">Share of all fees</th><th>Main receiver</th><th class="n">Relayed</th></tr></thead><tbody>` +
-    CC.top_automated.map(a => `<tr><td>${a.account}</td><td class="n">${pct(a.tx_share)}</td><td class="n">${pct(a.fee_share)}</td><td>${a.top_receiver}</td><td class="n">${pct(a.relayed, 0)}</td></tr>`).join("") +
-    `</tbody></table></div><details><summary>How this is computed</summary><p>Pooled over the last six sampled months; sample-based shares, so small accounts are noisy (<code>census/analyze.py: concentration</code>). Names are shown as they appear on chain; the classifier did not use them.</p></details>`;
+    (CC.top_automated || []).map(a => `<tr><td title="${esc(a.account)}"><a href="#verify" data-acct="${esc(a.account)}">${esc(short(a.account))}</a></td><td class="n">${pct(a.tx_share, 1)}</td><td class="n">${pct(a.fee_share, 1)}</td><td title="${esc(a.top_receiver)}">${esc(short(a.top_receiver))}</td><td class="n">${pct(a.relayed)}</td></tr>`).join("") +
+    `</tbody></table></div>`;
 }
+
+/* 06 forecast */
+if (F && F.horizon) {
+  const fx = x.concat(F.horizon), n = x.length;
+  const hist = col("tx_auto").concat(F.horizon.map(() => null));
+  const proj = fx.map((_, i) => i < n - 1 ? null : i === n - 1 ? last.tx_auto : F.share_p50[i - n]);
+  const lo = fx.map((_, i) => i < n ? null : F.share_lo[i - n]), hi = fx.map((_, i) => i < n ? null : F.share_hi[i - n]);
+  $("take-forecast").innerHTML = `Extrapolating a straight line through the logit of the last ${F.fit_months.length} months gives a median <b>${pct(F.share_p50.slice(-1)[0])}</b> by ${F.horizon.slice(-1)[0]} (95% band ${pct(F.share_lo.slice(-1)[0])}–${pct(F.share_hi.slice(-1)[0])}). The fitted slope is positive in ${pct(F.prob_slope_positive)} of bootstrap replicates. <b>This is not a prediction:</b> it shows how much a trend line is worth given this much sampling noise.`;
+  const h = card("c-forecast", "Trend extrapolation with sampling uncertainty", "Median and 95% band of the logit-linear fit, projected 12 months.",
+    "Each bootstrap replicate fits a line to logit(share) over the fit window and projects 12 months (<code>census/analyze.py: trend_forecast</code>). The band reflects sampling noise only; it excludes regime change, new protocols and changes in how software behaves.");
+  lineChart(h, { x: fx, yMax: 1, series: [
+    { name: "Measured (monthly)", values: hist, color: "--auto", w: 2.2 },
+    { name: "Extrapolation (median, 95% band)", values: proj, lo, hi, color: "--auto", dash: "6 5", w: 2.2 },
+  ]});
+} else { $("take-forecast").textContent = "Not enough months to fit a trend yet."; $("c-forecast").remove(); }
+
+/* 07 trust */
+$("take-trust").innerHTML = T.n_classified ? `On a held-out test split the classifier finds <b>${pct(T.recall_automated)}</b> of labelled automated accounts and keeps <b>${pct(T.recall_human)}</b> of labelled humans human, abstaining on ${pct(1 - (T.coverage ?? 0))} for lack of history. Labels come from evidence the classifier never sees, and they are biased toward self-declared bots and engaged humans, so read this as an <b>optimistic ceiling</b>.` : "Validation labels are not available in this build.";
+if (T.n_classified) {
+  const h = card("c-valid", "Held-out accuracy", `Test split: ${T.n_labelled} labelled accounts, ${T.n_classified} classified. Whiskers show Wilson 95% intervals.`,
+    `Labels: humans = recent NEAR Social writers with a profile name; automated = accounts whose id declares an automated role (<code>census/labels.py</code>). The split is fixed by a hash of the account id; rule weights were set on the dev split only (<code>census/validate.py</code>).`);
+  const ci = c => c ? { lo: c[0], hi: c[1] } : {};
+  barChart(h, [
+    { label: "Recall: automated accounts found", value: T.recall_automated, ...ci(T.recall_automated_ci), color: "--auto" },
+    { label: "Recall: human accounts kept human", value: T.recall_human, ...ci(T.recall_human_ci), color: "--human" },
+    { label: "Precision of the automated verdict", value: T.precision_automated, ...ci(T.precision_automated_ci), color: "--paid" },
+    { label: "Accuracy on classified accounts", value: T.accuracy, ...ci(T.accuracy_ci), color: "--neutral" },
+  ], { max: 1 });
+  const ab = V.ablation_test_balanced_accuracy || {}, base = ab.all_rules;
+  const rows = Object.entries(ab).filter(([k]) => k.startsWith("without:")).map(([k, v]) => ({ label: "without " + k.slice(8).replace(/_/g, " "), value: v - base })).sort((a, b) => a.value - b.value);
+  const h2 = card("c-abl", "What each rule contributes", "Change in test balanced accuracy when a single rule is removed. Negative means the rule was helping.", "Leave-one-rule-out ablation on the test split (<code>census/validate.py</code>).");
+  const e = Math.max(0.05, ...rows.map(r => Math.abs(r.value))) * 1.2;
+  barChart(h2, rows, { fmt: v => pts(v), min: -e, max: e, labelW: 330, rowH: 30 });
+} else { $("c-valid").remove(); $("c-abl").remove(); }
+
+/* 08 verify */
+{
+  const accts = R.accounts || {};
+  const names = Object.keys(accts);
+  const s = $("c-lookup");
+  s.innerHTML = `<h3>Why was this account classified that way?</h3><p class="sub">${names.length} profiled accounts from the latest months. Type or click one.</p>
+    <div class="lookup"><input id="q" list="accts" placeholder="e.g. ${esc(names[0] || "account.near")}" autocomplete="off" aria-label="Account id"><datalist id="accts">${names.map(a => `<option value="${esc(a)}">`).join("")}</datalist></div><div id="verdict"></div>`;
+  const rule = Object.fromEntries(RULES.map(r => [r.name, r]));
+  const show = a => {
+    const v = accts[a.trim()]; const box = $("verdict");
+    if (!v) { box.innerHTML = a ? `<p class="muted">Not in the profiled set. Only accounts from the latest sampled months are embedded; run <code>python -m census collect</code> to profile others.</p>` : ""; return; }
+    const kc = v.klass === "automated" ? "auto" : "hum";
+    box.innerHTML = `<div style="display:flex;gap:10px;align-items:center;margin:4px 0 12px;flex-wrap:wrap"><b style="font-size:18px">${esc(a.trim())}</b><span class="chip ${kc}">${v.klass.toUpperCase()} · score ${v.score}/100</span></div>
+      <div class="grid2"><div><dl class="verdict">
+        <dt>Observed signed txs</dt><dd>${v.n_obs}</dd><dt>Lifetime signed txs</dt><dd>${(v.txs_count_total ?? 0).toLocaleString()}</dd>
+        <dt>Rate (txs/day in window)</dt><dd>${v.rate_per_day == null ? "n/a" : v.rate_per_day.toFixed(1)}</dd><dt>Gaps ≤ 5 s</dt><dd>${pct(v.fast_share)}</dd>
+        <dt>Gaps on schedule (±10%)</dt><dd>${pct(v.periodic_share)}</dd><dt>Rest (≥5 h silences per day)</dt><dd>${v.rest_per_day == null ? "needs ≥ 2 days" : v.rest_per_day.toFixed(2)}</dd>
+        <dt>Hours of day active</dt><dd>${v.hour_coverage == null ? "needs ≥ 2 days" : pct(v.hour_coverage)}</dd><dt>Failure rate</dt><dd>${pct(v.fail_rate)}</dd>
+        <dt>Main receiver</dt><dd>${esc(short(v.top_receiver))}</dd><dt>Profiled as of</dt><dd>${v.period}</dd></dl></div>
+      <div><div class="muted" style="font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin-bottom:4px">Rules that fired</div>
+      ${v.fired.length ? v.fired.map(f => { const r = rule[f] || { points: 0, why: f }; return `<div class="rule"><span>${esc(r.why)}</span><span class="p ${r.points >= 0 ? "pos" : "neg"}">${r.points >= 0 ? "+" : ""}${r.points}</span></div>`; }).join("") : `<p class="muted">No rule fired.</p>`}
+      <p class="muted" style="font-size:13px;margin-top:8px">Score is the clipped sum (0–100); at or above 50 is automated. Account names are not an input.</p></div></div>`;
+  };
+  $("q").addEventListener("input", e => show(e.target.value));
+  document.addEventListener("click", e => { const a = e.target.closest("[data-acct]"); if (a) { $("q").value = a.dataset.acct; show(a.dataset.acct); } });
+  if (names[0]) { $("q").value = names[0]; show(names[0]); }
+}
+{
+  const rows = R.spot_check || [];
+  $("c-spot").innerHTML = `<h3>${rows.length} random transactions, one click from the chain</h3><p class="sub">A seeded random draw from the latest sampled months. "Open" goes to a public NEAR explorer so you can check the signer, receiver and fee yourself.</p>
+    <div class="scroll"><table><thead><tr><th>Time (UTC)</th><th>Initiator</th><th>Receiver</th><th>Verdict</th><th class="n">Score</th><th class="n">Fee (NEAR)</th><th>Relayed</th><th></th></tr></thead><tbody>` +
+    rows.map(r => `<tr><td>${r.time_utc}</td><td title="${esc(r.initiator)}"><a href="#verify" data-acct="${esc(r.initiator)}">${esc(short(r.initiator, 22))}</a></td><td title="${esc(r.receiver)}">${esc(short(r.receiver, 22))}</td>
+      <td><span class="chip ${r.klass === "automated" ? "auto" : r.klass === "human" ? "hum" : "info"}">${r.klass.replace("_", " ")}</span></td><td class="n">${r.score}</td><td class="n">${r.fee_near.toFixed(5)}</td><td>${r.relayed ? "yes" : "no"}</td>
+      <td><a href="${esc(r.url)}" target="_blank" rel="noopener">Open ↗</a></td></tr>`).join("") + `</tbody></table></div>`;
+}
+
+/* 09 thesis */
+$("take-thesis").innerHTML = `The claim from the brief: <b>NEAR's long-term value depends on software, not only people, transacting on it.</b> Each part is tested below and the verdict is decided by code from the confidence intervals, so a result that cuts against the thesis is reported as such. Re-running on new data re-decides every row.`;
+$("c-claims").innerHTML = `<div class="scroll" style="max-height:none"><table><thead><tr><th>#</th><th>Claim</th><th>Verdict</th><th>Evidence</th></tr></thead><tbody>` +
+  CLAIMS.map(c => { const [k, t] = chip(c.verdict); return `<tr><td>${c.id}</td><td style="white-space:normal;min-width:240px">${esc(c.statement)}</td><td><span class="chip ${k}">${t}</span></td><td style="white-space:normal;min-width:360px;color:var(--ink-2)">${esc(c.evidence)}</td></tr>`; }).join("") + `</tbody></table></div>`;
+$("c-mind").innerHTML = `<h3>What would change my mind</h3><ol style="margin:8px 0 6px;padding-left:20px;color:var(--ink-2)">${(R.thesis_changes_mind || []).map(t => `<li style="margin-bottom:6px">${esc(t).replace(/\*\*(.+?)\*\*/g, "<b style='color:var(--ink)'>$1</b>").replace(/`(.+?)`/g, "<code>$1</code>")}</li>`).join("")}</ol>`;
 </script>
 </body>
 </html>

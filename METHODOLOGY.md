@@ -101,7 +101,7 @@ memorise the labelling shortcuts, while a rule list can be audited line by line 
 * **Labels** ([census/labels.py](census/labels.py), [data/labels/](data/labels/)). *Human:* the account has a
   NEAR Social (SocialDB) profile name, an on-chain identity a person wrote about themselves. *Automated:* the
   account id declares an automated role (`bot`, `relayer`, `keeper`, `oracle`, `solver`, …) or is documented
-  infrastructure. Every candidate was reviewed by a person; removals and their reasons are recorded in
+  infrastructure. Every candidate was reviewed (by Claude Code, with the author able to audit it); removals and their reasons are recorded in
   [data/labels/review_notes.md](data/labels/review_notes.md).
 * **Split.** Half the labels are a **held-out test split** chosen by a hash of the account id, so the split
   cannot be cherry-picked. Rule weights were set while looking at the **dev** split only. Headline accuracy is
