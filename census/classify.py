@@ -47,9 +47,9 @@ def _lt(key, v):
 
 RULES: list[Rule] = [
     # volume -- machines sign far more transactions than people do
-    Rule("lifetime_volume_very_high", 20, _ge("txs_count_total", 20_000), "≥ 20k signed txs"),
+    Rule("lifetime_volume_very_high", 25, _ge("txs_count_total", 20_000), "≥ 20k signed txs"),
     Rule("lifetime_volume_high", 10, lambda f: _ok(f.get("txs_count_total")) and 2_000 <= f["txs_count_total"] < 20_000, "2k–20k signed txs"),
-    Rule("sustained_rate_very_high", 15, _ge("rate_per_day", 500), "≥ 500 txs/day in window"),
+    Rule("sustained_rate_very_high", 25, _ge("rate_per_day", 500), "≥ 500 txs/day in window"),
     Rule("sustained_rate_high", 8, lambda f: _ok(f.get("rate_per_day")) and 100 <= f["rate_per_day"] < 500, "100–500 txs/day in window"),
     # timing -- machine speed and schedules
     Rule("machine_speed_gaps", 20, _ge("fast_share", 0.5), "≥ 50% of gaps ≤ 5 s"),

@@ -44,6 +44,18 @@ def month_ranges(first: str, now: datetime | None = None) -> list[tuple[str, dat
     return out
 
 
+def cap_txs(df: pd.DataFrame) -> pd.DataFrame:
+    """Keep a seeded uniform random subsample of at most MAX_TX_PER_PERIOD transactions per month.
+
+    Every transaction has the same inclusion probability, so ratios of sums stay unbiased. Idempotent, and
+    applied identically at collection time and when merging, so old and new runs agree.
+    """
+    out = []
+    for _, g in df.groupby("period", sort=False):
+        out.append(g if len(g) <= C.MAX_TX_PER_PERIOD else g.sample(C.MAX_TX_PER_PERIOD, random_state=C.SEED).sort_index())
+    return pd.concat(out, ignore_index=True) if out else df
+
+
 def _paths(label: str) -> dict[str, Path]:
     return {k: BY_PERIOD / f"{label}_{k}.csv" for k in ("txs", "accounts", "blocks")}
 
@@ -84,7 +96,7 @@ def collect_period(client: Client, label: str, start: datetime, end: datetime, l
                 "fee_near": int(t["tokens_burnt"]) / 1e24, "gas_burnt": int(t["gas_burnt"]),
                 "pubkey": t.get("signer_public_key", ""),
             })
-    tx_df = pd.DataFrame(txs)
+    tx_df = cap_txs(pd.DataFrame(txs)) if txs else pd.DataFrame(txs)
     print(f"[{label}] heights {s_h}-{e_h}: {len(blocks)} blocks, {len(txs)} txs "
           f"({time.time() - t0:.0f}s)", flush=True)
 
@@ -134,12 +146,20 @@ def collect_period(client: Client, label: str, start: datetime, end: datetime, l
 
 
 def merge() -> None:
-    """Fold per-month files into the three committed tables."""
+    """Fold per-month files into the three committed tables (applying the same per-month transaction cap)."""
+    kept: dict[str, set] = {}
     for kind, name in (("txs", "sample_txs"), ("accounts", "account_features"), ("blocks", "sample_blocks")):
         files = sorted(BY_PERIOD.glob(f"*_{kind}.csv"))
         if not files:
             continue
         df = pd.concat([pd.read_csv(f, low_memory=False) for f in files], ignore_index=True)
+        if kind == "txs":
+            df = cap_txs(df)
+            kept = {"real": set(zip(df["period"], df["real_signer"])),
+                    "top": set(zip(df["period"], df.loc[df["payer"] != df["real_signer"], "payer"]))}
+        elif kind == "accounts" and kept:
+            keep = [(p, a) in kept[r] for p, a, r in zip(df["period"], df["account"], df["role"])]
+            df = df[keep]
         out = C.DERIVED / f"{name}.csv.gz"
         with gzip.open(out, "wt", newline="") as fh:
             df.to_csv(fh, index=False)

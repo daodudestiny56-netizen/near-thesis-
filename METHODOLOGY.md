@@ -109,6 +109,16 @@ memorise the labelling shortcuts, while a rule list can be audited line by line 
 * **Reported.** Coverage (how often we abstain), per-class recall with Wilson 95% intervals, precision, balanced
   accuracy, ROC AUC of the raw score, a threshold sweep, and a leave-one-rule-out ablation.
 
+### Tuning history (full disclosure)
+
+The held-out test split was not scored or printed during tuning (`python -m census validate --dev-only` withholds it). Changes made, in order:
+
+1. **Initial weights** were set from first principles before any label existed.
+2. **Volume weights raised** (`lifetime_volume_very_high` 20 → 25, `sustained_rate_very_high` 15 → 25) after the dev split showed
+   high-volume infrastructure (MPC nodes, relayers signing 1,000+ txs/day) scoring just under the threshold. Dev recall for
+   automated accounts moved from 0.43 to 0.79; human recall stayed at 0.99. Four dev errors remain (moderate-rate watchers
+   and one ambiguous account); they were **not** chased, to avoid fitting individual accounts on a small label set.
+
 ### Known limits of the validation (please read)
 
 1. **Label bias.** Human labels over-represent people who filled in a profile; automated labels over-represent

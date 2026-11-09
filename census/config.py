@@ -12,6 +12,8 @@ DENSE_FROM = "2024-01"            # every month from here on...
 SPARSE_STRIDE = 3                 # ...and one month per quarter (Jan/Apr/Jul/Oct) before it, as a long baseline
 BLOCKS_PER_PERIOD = 45            # uniformly random blocks drawn per calendar month
 SEED = 20261101                   # fixed so a re-run draws the identical blocks
+MAX_TX_PER_PERIOD = 160           # uniform random subsample of each month's sampled-block transactions (equal inclusion
+                                  # probability, so ratio estimates stay unbiased; bounds API calls in busy months)
 HISTORY_LIMIT = 200               # most recent signed transactions pulled per account (API max)
 FULL_TX_PER_SIGNER = 3            # sample transactions per signer fetched in full (call shape)
 FULL_TX_PER_PERIOD_CAP = 600      # ceiling on full-tx lookups per month to bound API calls

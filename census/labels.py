@@ -203,8 +203,12 @@ def label_features(labels: pd.DataFrame) -> pd.DataFrame:
     head = latest_height(client) + 1
     rows = []
     for k, a in enumerate(todo, 1):
-        res = client.post("account", {"account_id": a, "is_real_signer": True, "desc": True,
-                                      "limit": C.HISTORY_LIMIT, "to_tx_block_height": head})
+        try:
+            res = client.post("account", {"account_id": a, "is_real_signer": True, "desc": True,
+                                          "limit": C.HISTORY_LIMIT, "to_tx_block_height": head})
+        except Exception as e:                      # a failed lookup must not lose the others; it is retried on re-run
+            print(f"  skipped {a}: {e}", flush=True)
+            continue
         rows.append({"period": "label-time", "account": a, "role": "real",
                      **history_features(res.get("account_txs", []), res.get("txs_count"))})
         if k % 25 == 0:

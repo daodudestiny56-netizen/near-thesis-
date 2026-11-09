@@ -77,7 +77,7 @@ def rogan_gladen(observed: float, tpr: float, fpr: float) -> float | None:
     return float(min(1.0, max(0.0, (observed - fpr) / denom)))
 
 
-def run() -> None:
+def run(dev_only: bool = False) -> None:
     labels = pd.read_csv(C.LABELS / "labels.csv")
     labels = labels[labels["label"].isin(["automated", "human"])].copy()
     labels["split"] = labels["account"].map(split_of)
@@ -92,6 +92,15 @@ def run() -> None:
     df = labels.merge(acc, on="account", how="inner")
     print(f"{len(labels)} labels, {len(df)} found in the collected sample")
 
+    if dev_only:        # tuning mode: the held-out TEST split is never scored or printed
+        d = df[df["split"] == "dev"]
+        c = _confusion(d)
+        print(f"DEV ONLY  n={c['n_labelled']} classified={c['n_classified']} recall(auto)={c['recall_automated']:.2f} "
+              f"recall(human)={c['recall_human']:.2f} bal.acc={c['balanced_accuracy']:.2f}  tp={c['tp']} fn={c['fn']} tn={c['tn']} fp={c['fp']}")
+        wrong = d[(d["klass"] != "low_activity") & (d["klass"] != d["label"])]
+        pd.set_option("display.width", 200)
+        print(wrong[["account", "label", "klass", "score", "n_obs", "txs_count_total", "rate_per_day", "fast_share", "periodic_share", "rest_per_day", "hour_coverage", "fired"]].round(2).to_string())
+        return
     out: dict = {"n_labels": int(len(labels)), "n_matched": int(len(df)),
                  "label_sources": labels["evidence_type"].value_counts().to_dict()}
     for name, part in (("dev", df[df["split"] == "dev"]), ("test", df[df["split"] == "test"]), ("all", df)):

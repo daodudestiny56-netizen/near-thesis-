@@ -22,7 +22,9 @@ def main() -> None:
     c.add_argument("--first", default=C.FIRST_PERIOD, help="first month, YYYY-MM")
     c.add_argument("--last", default=None, help="last month, YYYY-MM")
     c.add_argument("--blocks", type=int, default=C.BLOCKS_PER_PERIOD, help="random blocks per month")
-    for name in ("classify", "validate", "analyze", "thesis", "report", "dashboard", "submission", "reproduce", "merge"):
+    v = sub.add_parser("validate")
+    v.add_argument("--dev-only", action="store_true", help="tuning mode: score and print the DEV split only")
+    for name in ("classify", "analyze", "thesis", "report", "dashboard", "submission", "reproduce", "merge"):
         sub.add_parser(name)
     args = p.parse_args()
 
@@ -37,7 +39,7 @@ def main() -> None:
         run()
     elif args.cmd == "validate":
         from .validate import run
-        run()
+        run(args.dev_only)
     elif args.cmd == "analyze":
         from .analyze import run
         run()
