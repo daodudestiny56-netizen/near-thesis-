@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.env
+.venv/
+# raw API cache (re-creatable, large) and per-month working files
+data/cache/
+data/derived/by_period/
+*.sqlite
+# editor / OS
+.vscode/
+.idea/
+Thumbs.db

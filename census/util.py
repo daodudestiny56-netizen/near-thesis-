@@ -1,0 +1,21 @@
+"""Small shared helpers."""
+from __future__ import annotations
+
+import math
+
+import numpy as np
+
+
+def jsonable(o):
+    """Recursively convert numpy scalars/arrays and NaN/inf into plain JSON-safe values (NaN -> null)."""
+    if isinstance(o, dict):
+        return {str(k): jsonable(v) for k, v in o.items()}
+    if isinstance(o, (list, tuple)):
+        return [jsonable(v) for v in o]
+    if isinstance(o, np.ndarray):
+        return jsonable(o.tolist())
+    if isinstance(o, np.generic):
+        return jsonable(o.item())
+    if isinstance(o, float) and (math.isnan(o) or math.isinf(o)):
+        return None
+    return o

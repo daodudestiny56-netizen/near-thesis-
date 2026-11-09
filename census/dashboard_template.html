@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NEAR Agent Census</title>
+<meta name="description" content="How much of NEAR's activity is automated? A measured, re-runnable census of agent-like behaviour on NEAR.">
+<style>
+:root {
+  color-scheme: light;
+  --surface: #fcfcfb; --surface-2: #f4f3f0; --line: #dcdad4; --grid: #e9e7e2;
+  --ink: #0b0b0b; --ink-2: #52514e; --ink-3: #6f6d68;
+  --auto: #2a78d6; --human: #eb6834; --paid: #1baf7a; --warn: #8a5a00;
+  --band: rgba(42,120,214,.16);
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --surface: #1a1a19; --surface-2: #232321; --line: #3a3a37; --grid: #2d2d2b;
+    --ink: #f0efec; --ink-2: #c3c2b7; --ink-3: #a09f95;
+    --auto: #3987e5; --human: #d95926; --paid: #199e70; --warn: #e0a64a;
+    --band: rgba(57,135,229,.22);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --surface: #1a1a19; --surface-2: #232321; --line: #3a3a37; --grid: #2d2d2b;
+  --ink: #f0efec; --ink-2: #c3c2b7; --ink-3: #a09f95;
+  --auto: #3987e5; --human: #d95926; --paid: #199e70; --warn: #e0a64a;
+  --band: rgba(57,135,229,.22);
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--surface); color: var(--ink); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+main { max-width: 1080px; margin: 0 auto; padding: 0 16px 64px; }
+header { padding: 40px 0 8px; }
+h1 { font-size: clamp(28px, 5vw, 44px); line-height: 1.1; margin: 0 0 10px; letter-spacing: -.02em; }
+.lede { font-size: 18px; color: var(--ink-2); max-width: 760px; margin: 0 0 8px; }
+.meta { font-size: 13px; color: var(--ink-3); }
+.meta a { color: inherit; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 24px 0 8px; }
+.tile { background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+.tile .k { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); }
+.tile .v { font-size: 34px; font-weight: 650; letter-spacing: -.02em; line-height: 1.15; margin: 4px 0 2px; font-variant-numeric: tabular-nums; }
+.tile .s { font-size: 13px; color: var(--ink-2); }
+section.card { border-top: 1px solid var(--line); padding: 28px 0 8px; }
+h2 { font-size: 22px; margin: 0 0 6px; letter-spacing: -.01em; }
+.claim { color: var(--ink-2); margin: 0 0 12px; max-width: 820px; }
+.chartwrap { position: relative; }
+svg { width: 100%; height: auto; display: block; overflow: visible; }
+.axis text { fill: var(--ink-3); font-size: 11px; }
+.gridline { stroke: var(--grid); stroke-width: 1; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--ink-2); margin: 8px 0 4px; }
+.legend i { display: inline-block; width: 18px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+.tip { position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 12.5px; box-shadow: 0 4px 16px rgba(0,0,0,.18); min-width: 170px; display: none; z-index: 5; }
+.tip b { display: block; margin-bottom: 4px; }
+.tip div { display: flex; justify-content: space-between; gap: 14px; font-variant-numeric: tabular-nums; }
+details { margin: 8px 0; font-size: 13.5px; color: var(--ink-2); }
+summary { cursor: pointer; color: var(--ink); }
+summary:focus-visible, button:focus-visible { outline: 2px solid var(--auto); outline-offset: 2px; }
+code { font: 12.5px ui-monospace, Menlo, Consolas, monospace; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--line); }
+th { color: var(--ink-3); font-weight: 600; }
+td.n, th.n { text-align: right; }
+.scroll { overflow-x: auto; max-height: 360px; }
+.note { background: var(--surface-2); border-left: 3px solid var(--warn); padding: 10px 14px; border-radius: 6px; font-size: 14px; color: var(--ink-2); margin: 12px 0; }
+button.toggle { background: var(--surface-2); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; font-size: 12.5px; cursor: pointer; }
+footer { border-top: 1px solid var(--line); margin-top: 36px; padding-top: 16px; font-size: 13px; color: var(--ink-3); }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <div class="meta">NEAR HACKATHON · Investment Thesis track · <span id="gen"></span></div>
+  <h1>The NEAR Agent Census</h1>
+  <p class="lede" id="lede"></p>
+  <div class="meta">Every number on this page is computed from a random sample of NEAR blocks by code in
+  <a href="https://github.com/daodudestiny56-netizen/near-thesis-">this repository</a>. Re-run it with <code>python -m census reproduce</code>. Nothing is typed in by hand.</div>
+  <div class="tiles" id="tiles"></div>
+</header>
+
+<div class="note" id="caveat"></div>
+
+<section class="card" id="c-share"></section>
+<section class="card" id="c-fees"></section>
+<section class="card" id="c-shape"></section>
+<section class="card" id="c-forecast"></section>
+<section class="card" id="c-valid"></section>
+<section class="card" id="c-top"></section>
+
+<footer>
+  Data: <a href="https://docs.fastnear.com/tx" style="color:inherit">FastNEAR Transactions API</a>, queried live and cached.
+  Method, limits and the labelled set are documented in METHODOLOGY.md. "Automated" is a behavioural class: it includes AI agents, classic bots and infrastructure such as relayers; behaviour alone cannot separate them.
+</footer>
+</main>
+<script id="data" type="application/json">/*DATA*/</script>
+<script>
+"use strict";
+const D = JSON.parse(document.getElementById("data").textContent);
+const M = D.results.monthly, V = D.validation, F = D.results.forecast, CC = D.results.concentration;
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const pct = (x, d = 1) => (x == null || isNaN(x)) ? "n/a" : (x * 100).toFixed(d) + "%";
+const last = M[M.length - 1];
+const NS = "http://www.w3.org/2000/svg";
+const el = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; };
+
+function section(id, title, claim, how) {
+  const s = document.getElementById(id);
+  s.innerHTML = `<h2>${title}</h2><p class="claim">${claim}</p><div class="legend" data-legend></div>
+    <div class="chartwrap"><div data-chart></div><div class="tip" data-tip></div></div>
+    <details><summary>How this is computed</summary><p>${how}</p></details>
+    <details><summary>Table view</summary><div class="scroll" data-table></div></details>`;
+  return { chart: s.querySelector("[data-chart]"), tip: s.querySelector("[data-tip]"), legend: s.querySelector("[data-legend]"), table: s.querySelector("[data-table]") };
+}
+
+/* generic multi-line chart with optional CI band, hover crosshair and legend */
+function lineChart(host, { x, series, yMax, yFmt = pct, height = 300, vlines = [] }) {
+  const W = 980, H = height, m = { l: 48, r: 16, t: 10, b: 28 };
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": series.map(s => s.name).join(", ") });
+  const iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const ymax = yMax ?? Math.max(...series.flatMap(s => (s.hi || s.values).filter(v => v != null)), 0.01) * 1.08;
+  const X = i => m.l + (x.length === 1 ? iw / 2 : i * iw / (x.length - 1)), Y = v => m.t + ih - (Math.min(v, ymax) / ymax) * ih;
+  const ticks = 5;
+  for (let t = 0; t <= ticks; t++) {
+    const v = ymax * t / ticks;
+    el("line", { x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v), class: "gridline" }, svg);
+    const g = el("g", { class: "axis" }, svg); const tx = el("text", { x: m.l - 8, y: Y(v) + 4, "text-anchor": "end" }, g); tx.textContent = yFmt(v, 0);
+  }
+  const step = Math.ceil(x.length / 9);
+  x.forEach((p, i) => { if (i % step === 0 || i === x.length - 1) { const g = el("g", { class: "axis" }, svg); const tx = el("text", { x: X(i), y: H - 8, "text-anchor": "middle" }, g); tx.textContent = p; } });
+  vlines.forEach(v => { const i = x.indexOf(v.at); if (i >= 0) { el("line", { x1: X(i), x2: X(i), y1: m.t, y2: m.t + ih, stroke: css("--ink-3"), "stroke-dasharray": "3 4" }, svg); const t = el("text", { x: X(i) + 4, y: m.t + 12, fill: css("--ink-3"), "font-size": 11 }, svg); t.textContent = v.label; } });
+  series.forEach(s => {
+    if (s.lo && s.hi) {
+      let d = "", pts = [];
+      x.forEach((_, i) => { if (s.hi[i] != null) pts.push([X(i), Y(s.hi[i])]); });
+      for (let i = x.length - 1; i >= 0; i--) if (s.lo[i] != null) pts.push([X(i), Y(s.lo[i])]);
+      el("polygon", { points: pts.map(p => p.join(",")).join(" "), fill: s.band || css("--band"), stroke: "none" }, svg);
+    }
+    let path = ""; s.values.forEach((v, i) => { if (v != null) path += (path ? "L" : "M") + X(i) + " " + Y(v); });
+    el("path", { d: path, fill: "none", stroke: css(s.color), "stroke-width": 2, "stroke-linejoin": "round", "stroke-dasharray": s.dash || "" }, svg);
+    if (x.length <= 40) s.values.forEach((v, i) => { if (v != null) el("circle", { cx: X(i), cy: Y(v), r: 3, fill: css(s.color), stroke: css("--surface"), "stroke-width": 2 }, svg); });
+  });
+  const cross = el("line", { y1: m.t, y2: m.t + ih, stroke: css("--ink-3"), "stroke-width": 1, visibility: "hidden" }, svg);
+  const hit = el("rect", { x: m.l, y: m.t, width: iw, height: ih, fill: "transparent" }, svg);
+  host.chart.appendChild(svg);
+  host.legend.innerHTML = series.map(s => `<span><i style="background:${css(s.color)};${s.dash ? "opacity:.7" : ""}"></i>${s.name}</span>`).join("");
+  const tip = host.tip;
+  const move = ev => {
+    const r = svg.getBoundingClientRect(), px = (ev.clientX - r.left) / r.width * W;
+    const i = Math.max(0, Math.min(x.length - 1, Math.round((px - m.l) / iw * (x.length - 1))));
+    cross.setAttribute("x1", X(i)); cross.setAttribute("x2", X(i)); cross.setAttribute("visibility", "visible");
+    tip.style.display = "block";
+    tip.innerHTML = `<b>${x[i]}</b>` + series.map(s => `<div><span style="color:var(--ink-2)">${s.name}</span><span>${s.values[i] == null ? "n/a" : yFmt(s.values[i])}${s.lo && s.lo[i] != null ? ` <span style="color:var(--ink-3)">(${yFmt(s.lo[i])}–${yFmt(s.hi[i])})</span>` : ""}</span></div>`).join("");
+    const wrap = host.chart.parentElement.getBoundingClientRect();
+    let left = ev.clientX - wrap.left + 14; if (left > wrap.width - 200) left -= 230;
+    tip.style.left = left + "px"; tip.style.top = Math.max(0, ev.clientY - wrap.top - 30) + "px";
+  };
+  hit.addEventListener("pointermove", move);
+  hit.addEventListener("pointerleave", () => { tip.style.display = "none"; cross.setAttribute("visibility", "hidden"); });
+  host.table.innerHTML = `<table><thead><tr><th>Month</th>${series.map(s => `<th class="n">${s.name}</th>`).join("")}</tr></thead><tbody>` +
+    x.map((p, i) => `<tr><td>${p}</td>${series.map(s => `<td class="n">${s.values[i] == null ? "" : yFmt(s.values[i])}${s.lo && s.lo[i] != null ? ` (${yFmt(s.lo[i])}–${yFmt(s.hi[i])})` : ""}</td>`).join("")}</tr>`).join("") + `</tbody></table>`;
+}
+
+/* horizontal bars with optional whiskers */
+function barChart(host, rows, { fmt = pct, max = 1, zero = 0 }) {
+  const W = 980, rh = 34, H = rows.length * rh + 20, m = { l: 300, r: 60, t: 6 };
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img" });
+  const X = v => m.l + (v - zero) / (max - zero) * (W - m.l - m.r);
+  rows.forEach((r, i) => {
+    const y = m.t + i * rh;
+    const t = el("text", { x: m.l - 10, y: y + 17, "text-anchor": "end", fill: css("--ink-2"), "font-size": 12.5 }, svg); t.textContent = r.label;
+    if (r.value != null && !isNaN(r.value)) {
+      const x0 = X(Math.min(zero, r.value)), x1 = X(Math.max(zero, r.value));
+      el("rect", { x: x0, y: y + 5, width: Math.max(2, x1 - x0), height: 18, rx: 4, fill: css(r.color || "--auto") }, svg);
+      if (r.lo != null) { el("line", { x1: X(r.lo), x2: X(r.hi), y1: y + 14, y2: y + 14, stroke: css("--ink"), "stroke-width": 1.5 }, svg); el("line", { x1: X(r.lo), x2: X(r.lo), y1: y + 9, y2: y + 19, stroke: css("--ink"), "stroke-width": 1.5 }, svg); el("line", { x1: X(r.hi), x2: X(r.hi), y1: y + 9, y2: y + 19, stroke: css("--ink"), "stroke-width": 1.5 }, svg); }
+      const v = el("text", { x: X(r.hi ?? Math.max(zero, r.value)) + 8, y: y + 18, fill: css("--ink"), "font-size": 12.5 }, svg); v.textContent = fmt(r.value);
+    }
+  });
+  host.chart.appendChild(svg);
+  host.table.innerHTML = `<table><thead><tr><th>Item</th><th class="n">Value</th><th class="n">95% CI</th></tr></thead><tbody>` +
+    rows.map(r => `<tr><td>${r.label}</td><td class="n">${fmt(r.value)}</td><td class="n">${r.lo != null ? fmt(r.lo) + "–" + fmt(r.hi) : ""}</td></tr>`).join("") + `</tbody></table>`;
+}
+
+const x = M.map(r => r.period);
+const col = k => M.map(r => r[k] ?? null);
+
+/* header */
+document.getElementById("gen").textContent = `${D.results.generated_from.months} months, ${D.results.generated_from.blocks.toLocaleString()} sampled blocks, ${D.results.generated_from.txs.toLocaleString()} transactions`;
+document.getElementById("lede").textContent = `Is NEAR becoming the chain that software lives on? In ${last.period}, accounts behaving like software initiated ${pct(last.tx_auto, 0)} of the transactions we sampled (95% CI ${pct(last.tx_auto_lo, 0)}–${pct(last.tx_auto_hi, 0)}). Here is how that has moved, who pays the fees, and how far we trust the classifier.`;
+const T = V.test || {};
+document.getElementById("tiles").innerHTML = [
+  ["Automated share of transactions", pct(last.tx_auto), `${last.period} · 95% CI ${pct(last.tx_auto_lo)}–${pct(last.tx_auto_hi)}`],
+  ["Fees initiated by automated accounts", pct(last.fee_init_auto), `${last.period} · 95% CI ${pct(last.fee_init_auto_lo)}–${pct(last.fee_init_auto_hi)}`],
+  ["Fees paid by automated accounts", pct(last.fee_paid_auto), "includes relayers paying for human users"],
+  ["Classifier balanced accuracy", pct(T.balanced_accuracy, 0), `held-out test split, n=${T.n_classified ?? "?"} labelled accounts`],
+].map(t => `<div class="tile"><div class="k">${t[0]}</div><div class="v">${t[1]}</div><div class="s">${t[2]}</div></div>`).join("");
+document.getElementById("caveat").innerHTML = `<b>Read this first.</b> "Automated" means <i>behaves like software</i>: it includes AI agents, classic trading and keeper bots, oracles and relayers. Behaviour cannot tell an LLM agent from a cron job, so this is an upper-level measure of agent activity, not a headcount of AI agents. Accounts with too little history to judge (${pct(last.tx_low)} of ${last.period} transactions) are left unclassified and shown as a bound.`;
+
+/* 1 share */
+{
+  const h = section("c-share", "Automated accounts initiate most sampled activity",
+    `In ${last.period}, ${pct(last.tx_auto)} of sampled transactions were initiated by accounts classified as automated; the upper bound, if every unclassified low-activity account were also a bot, is ${pct(last.tx_auto_upper)}. The shaded band is the 95% sampling interval.`,
+    `For each month, 45 blocks are drawn uniformly at random; every transaction's <i>real</i> signer (meta-transactions resolved to the user, not the relayer) is classified from its own last 200 signed transactions. Share = automated txs ÷ all txs over the sampled blocks; the interval is a cluster bootstrap over blocks (<code>census/analyze.py: monthly_series</code>, 1000 resamples).`);
+  lineChart(h, { x, yMax: 1, series: [
+    { name: "Automated (point estimate, 95% CI)", values: col("tx_auto"), lo: col("tx_auto_lo"), hi: col("tx_auto_hi"), color: "--auto" },
+    { name: "Upper bound (low-activity counted as automated)", values: col("tx_auto_upper"), color: "--auto", dash: "5 5" },
+    { name: "Human-like", values: col("tx_human"), color: "--human" },
+  ]});
+}
+/* 2 fees */
+{
+  const h = section("c-fees", "Who pays the fees is a different question from who initiates them",
+    `In ${last.period}, automated accounts initiated ${pct(last.fee_init_auto)} of fees (tokens burnt) but on-chain fee payers classified as automated paid ${pct(last.fee_paid_auto)}: the gap is relayers paying gas for users via meta-transactions (NEP-366).`,
+    `Fee = the indexer's per-transaction <code>tokens_burnt</code> for each sampled transaction. <i>Initiated</i> classifies the real signer; <i>paid</i> classifies the account that signed the on-chain transaction (the relayer for meta-transactions). The protocol changed in v87: before it contracts received 30% of burnt gas, after it all is burned (docs.near.org/protocol/transactions/gas), so fee levels are not comparable across that boundary; shares are.`);
+  lineChart(h, { x, yMax: 1, series: [
+    { name: "Fees initiated by automated accounts (95% CI)", values: col("fee_init_auto"), lo: col("fee_init_auto_lo"), hi: col("fee_init_auto_hi"), color: "--auto" },
+    { name: "Fees paid by automated accounts", values: col("fee_paid_auto"), color: "--paid" },
+  ]});
+}
+/* 3 shape */
+{
+  const h = section("c-shape", "Relayed and intents-bound transactions",
+    `${pct(last.relayed)} of ${last.period} sampled transactions were relayed (a relayer signed, a user initiated) and ${pct(last.to_intents, 2)} were addressed to <code>intents.near</code>.`,
+    `Relayed = the indexer's <code>is_relayed</code> flag. Intents = transactions whose receiver is the NEAR Intents contract; this is a lower bound on intents involvement (it misses deposits routed through token contracts).`);
+  lineChart(h, { x, series: [
+    { name: "Relayed (meta-transaction) share", values: col("relayed"), lo: col("relayed_lo"), hi: col("relayed_hi"), color: "--paid", band: "rgba(27,175,122,.16)" },
+    { name: "Share addressed to intents.near", values: col("to_intents"), color: "--human" },
+  ]});
+}
+/* 4 forecast */
+{
+  if (F && F.horizon) {
+    const fx = x.concat(F.horizon), n = x.length;
+    const hist = col("tx_auto").concat(F.horizon.map(() => null));
+    const proj = fx.map((_, i) => i < n - 1 ? null : i === n - 1 ? last.tx_auto : F.share_p50[i - n]);
+    const lo = fx.map((_, i) => i < n ? null : F.share_lo[i - n]), hi = fx.map((_, i) => i < n ? null : F.share_hi[i - n]);
+    const h = section("c-forecast", "Where the trend points, and how little that proves",
+      `Extrapolating the logit-linear trend of the last ${F.fit_months.length} months gives a median ${pct(F.share_p50[F.share_p50.length - 1], 0)} automated share by ${F.horizon[F.horizon.length - 1]} (95% band ${pct(F.share_lo[F.share_lo.length - 1], 0)}–${pct(F.share_hi[F.share_hi.length - 1], 0)}). The measured slope is positive in ${pct(F.prob_slope_positive, 0)} of bootstrap replicates.`,
+      `Each bootstrap replicate fits a line to logit(share) over the fit window and projects ${F.horizon.length} months (<code>census/analyze.py: trend_forecast</code>). The band reflects sampling noise only: it is <b>not</b> a prediction and ignores regime change, new protocols and shifts in how bots behave.`);
+    lineChart(h, { x: fx, yMax: 1, series: [
+      { name: "Measured", values: hist, color: "--auto" },
+      { name: "Trend extrapolation (median, 95% band)", values: proj, lo, hi, color: "--auto", dash: "5 5" },
+    ]});
+  } else document.getElementById("c-forecast").innerHTML = "<h2>Forecast</h2><p class='claim'>Not enough months to fit a trend.</p>";
+}
+/* 5 validation */
+{
+  const h = section("c-valid", "How far to trust the classifier",
+    `On the held-out test split the classifier finds ${pct(T.recall_automated, 0)} of labelled automated accounts and ${pct(T.recall_human, 0)} of labelled humans, abstaining on ${pct(1 - (T.coverage ?? 0), 0)} (too little history). Labels are biased towards self-declared bots and engaged humans, so treat this as an optimistic ceiling.`,
+    `Labels come from evidence the classifier never sees: NEAR Social profiles for humans, self-declared roles in account ids for bots (<code>census/labels.py</code>). Intervals are Wilson 95%. The split is fixed by a hash of the account id; thresholds were set on the dev split only (<code>census/validate.py</code>).`);
+  const ci = (v, c) => c ? { lo: c[0], hi: c[1] } : {};
+  barChart(h, [
+    { label: "Recall: automated accounts found", value: T.recall_automated, ...ci(0, T.recall_automated_ci), color: "--auto" },
+    { label: "Recall: human accounts kept human", value: T.recall_human, ...ci(0, T.recall_human_ci), color: "--human" },
+    { label: "Precision of the automated verdict", value: T.precision_automated, ...ci(0, T.precision_automated_ci), color: "--auto" },
+    { label: "Overall accuracy on classified", value: T.accuracy, ...ci(0, T.accuracy_ci), color: "--paid" },
+  ], {});
+  const ab = V.ablation_test_balanced_accuracy || {}, base = ab.all_rules;
+  const rows = Object.entries(ab).filter(([k]) => k.startsWith("without:")).map(([k, v]) => ({ label: "without " + k.slice(8), value: v - base })).sort((a, b) => a.value - b.value);
+  const d = document.createElement("div"); d.style.marginTop = "18px";
+  d.innerHTML = `<p class="claim"><b>What each rule contributes.</b> Change in test balanced accuracy when one rule is removed (negative = the rule was helping).</p>`;
+  h.chart.appendChild(d);
+  const host2 = { chart: d, table: document.createElement("div") };
+  barChart(host2, rows, { fmt: v => (v >= 0 ? "+" : "") + (v * 100).toFixed(1) + " pts", max: Math.max(0.05, ...rows.map(r => r.value)), zero: Math.min(-0.05, ...rows.map(r => r.value)) });
+}
+/* 6 who */
+{
+  const s = document.getElementById("c-top");
+  s.innerHTML = `<h2>Who the automated accounts are</h2><p class="claim">${CC.accounts_for_half_of_automated_txs} accounts produce half of all automated transactions sampled in ${CC.periods[0]}–${CC.periods[CC.periods.length - 1]}; automated activity is concentrated, not diffuse.</p>
+  <div class="scroll"><table><thead><tr><th>Account</th><th class="n">Share of all txs</th><th class="n">Share of all fees</th><th>Main receiver</th><th class="n">Relayed</th></tr></thead><tbody>` +
+    CC.top_automated.map(a => `<tr><td>${a.account}</td><td class="n">${pct(a.tx_share)}</td><td class="n">${pct(a.fee_share)}</td><td>${a.top_receiver}</td><td class="n">${pct(a.relayed, 0)}</td></tr>`).join("") +
+    `</tbody></table></div><details><summary>How this is computed</summary><p>Pooled over the last six sampled months; sample-based shares, so small accounts are noisy (<code>census/analyze.py: concentration</code>). Names are shown as they appear on chain; the classifier did not use them.</p></details>`;
+}
+</script>
+</body>
+</html>
