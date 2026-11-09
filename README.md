@@ -116,8 +116,9 @@ tools/make_video.py     records the demo video from the dashboard (presentation 
 
 ## Related project (disclosed per the hackathon rules)
 
-The author is also submitting **MIRA**, a separate project, to the same hackathon as its own entry. This census is the
-Investment Thesis submission. Each README names the other, as the hackathon rules require.
+The author is also submitting **[MIRA](https://github.com/daodudestiny56-netizen/near-memcoin)**, a separate project in the
+Memecoins With Mechanics track: a NEP-141 memecoin whose supply reacts to community activity. MIRA is its own entry; this
+census is the Investment Thesis submission. Each README names the other, as the hackathon rules require.
 
 ## License
 
