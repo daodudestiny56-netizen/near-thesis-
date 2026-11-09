@@ -7,6 +7,7 @@
   thesis      evaluate every claim and write THESIS.md
   report      write RESULTS.md
   dashboard   write docs/index.html
+  submission  draft the form text and X posts into submission/ (git-ignored)
   reproduce   classify -> validate -> analyze -> thesis -> report -> dashboard from the committed data (offline, ~1 min)
 """
 import argparse
@@ -21,7 +22,7 @@ def main() -> None:
     c.add_argument("--first", default=C.FIRST_PERIOD, help="first month, YYYY-MM")
     c.add_argument("--last", default=None, help="last month, YYYY-MM")
     c.add_argument("--blocks", type=int, default=C.BLOCKS_PER_PERIOD, help="random blocks per month")
-    for name in ("classify", "validate", "analyze", "thesis", "report", "dashboard", "reproduce", "merge"):
+    for name in ("classify", "validate", "analyze", "thesis", "report", "dashboard", "submission", "reproduce", "merge"):
         sub.add_parser(name)
     args = p.parse_args()
 
@@ -39,6 +40,9 @@ def main() -> None:
         run()
     elif args.cmd == "analyze":
         from .analyze import run
+        run()
+    elif args.cmd == "submission":
+        from .submission import run
         run()
     elif args.cmd == "thesis":
         from .thesis import run

@@ -85,6 +85,10 @@ def run() -> None:
     acc = acc[acc["role"] == "real"]
     # one observation per labelled account: the most recent month it was profiled with any history
     acc = acc.sort_values(["account", "period"]).groupby("account").tail(1)
+    extra_path = C.LABELS / "label_features.csv"          # label accounts that are not in the transaction sample
+    if extra_path.exists():
+        extra = classify_frame(pd.read_csv(extra_path))
+        acc = pd.concat([acc, extra[~extra["account"].isin(acc["account"])]], ignore_index=True)
     df = labels.merge(acc, on="account", how="inner")
     print(f"{len(labels)} labels, {len(df)} found in the collected sample")
 

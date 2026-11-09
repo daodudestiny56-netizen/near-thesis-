@@ -10,3 +10,6 @@ data/derived/by_period/
 .vscode/
 .idea/
 Thumbs.db
+
+# generated drafts contain personal details
+submission/

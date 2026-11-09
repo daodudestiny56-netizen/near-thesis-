@@ -114,6 +114,11 @@ tools/make_video.py     records the demo video from the dashboard (presentation 
   [`data/labels/review_notes.md`](data/labels/review_notes.md) and is open to audit. Submission decisions are the author's.
 * **No wallet, no keys, no transactions:** the project only reads public chain data. There is nothing to deploy to mainnet.
 
+## Related project (disclosed per the hackathon rules)
+
+The author is also submitting **MIRA**, a separate project, to the same hackathon as its own entry. This census is the
+Investment Thesis submission. Each README names the other, as the hackathon rules require.
+
 ## License
 
 MIT, see [LICENSE](LICENSE).
