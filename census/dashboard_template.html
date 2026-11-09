@@ -170,7 +170,7 @@ footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 28px 0 56
 </section>
 
 <section id="finger">
-  <div class="sec-h"><span class="no">04</span><h2>Software doesn't sleep</h2></div>
+  <div class="sec-h"><span class="no">04</span><h2 id="h-finger">Do software and people keep different hours?</h2></div>
   <p class="take" id="take-finger"></p>
   <div class="card" id="c-hour"></div>
 </section>
@@ -221,6 +221,7 @@ footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 28px 0 56
 "use strict";
 const D = JSON.parse(document.getElementById("data").textContent);
 const R = D.results, M = R.monthly, V = D.validation || {}, F = R.forecast || {}, CC = R.concentration || {};
+const P = D.params || {};
 const LW = (R.latest_window || {}).metrics || {}, WIN = R.windows, CLAIMS = R.claims || [], RULES = D.rules || [];
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const pct = (x, d = 0) => (x == null || isNaN(x)) ? "n/a" : (x * 100).toFixed(d) + "%";
@@ -344,17 +345,17 @@ $("caveat").innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="n
 
 /* how it works */
 $("steps").innerHTML = [
-  ["Sample", "45 blocks per month are drawn uniformly at random (seeded), so every transaction has an equal chance of being picked.", `${gen.blocks.toLocaleString()} blocks · ${gen.txs.toLocaleString()} transactions`],
-  ["Profile", "Each initiator (resolving relayed transactions to the real user) is profiled from its last 200 signed transactions: timing, rest, volume, failures.", "behaviour only: no names, no off-chain data"],
-  ["Classify", "A transparent rule list scores each account 0–100. Too little history means 'unclassified', never silently 'human'.", `${RULES.length} named rules, each ablated in the validation`],
-  ["Measure", "Shares of transactions and fees, with cluster-bootstrap 95% intervals over blocks, plus a held-out accuracy test.", "1,000 bootstrap resamples, fixed seed"],
+  ["Sample", `${P.blocks} blocks per month are drawn uniformly at random (seeded), then at most ${P.tx_cap} of their transactions: every transaction has an equal chance of being picked.`, `${gen.blocks.toLocaleString()} blocks · ${gen.txs.toLocaleString()} transactions`],
+  ["Profile", `Each initiator (resolving relayed transactions to the real user) is profiled from its last ${P.history} signed transactions: timing, rest, volume, failures.`, "behaviour only: no names, no off-chain data"],
+  ["Classify", `A transparent rule list scores each account 0–100 (automated at ${P.threshold}+). Fewer than ${P.min_obs} observed transactions means 'unclassified', never silently 'human'.`, `${RULES.length} named rules, each ablated in the validation`],
+  ["Measure", "Shares of transactions and fees, with cluster-bootstrap 95% intervals over blocks, plus a held-out accuracy test.", `${P.bootstrap.toLocaleString()} bootstrap resamples, fixed seed`],
 ].map((s, i) => `<div class="step"><div class="num">${i + 1}</div><h4>${s[0]}</h4><p>${s[1]}</p><div class="stat">${s[2]}</div></div>`).join("");
 
 /* 02 share */
 $("take-share").innerHTML = lwA ? `Over ${spanTxt}, <b>${pct(lwA.point)}</b> of sampled transactions were initiated by accounts that behave like software (95% interval ${pct(lwA.lo)}–${pct(lwA.hi)}). Move the cut-off and it ranges from <b>${pct(lwLo?.point)}</b> (strict) to <b>${pct(lwHi?.point)}</b> (lenient): the borderline accounts are a real share of the answer, so they are not hidden.` : "";
 {
   const h = card("c-share", "Automated share of transactions over time", "Monthly estimate with 95% interval, the 3-month pooled estimate, and the strict and lenient cut-offs.",
-    `Each month: 45 random blocks; every transaction's real signer is classified from its own history; share = automated txs ÷ all txs over the sampled blocks; the interval is a cluster bootstrap over blocks (<code>census/analyze.py: monthly_series</code>). The 3-month line pools three months of blocks for a tighter estimate. Before 2024 only one month per quarter is sampled.`);
+    `Each month: ${P.blocks} random blocks; every transaction's real signer is classified from its own history; share = automated txs ÷ all txs over the sampled blocks; the interval is a cluster bootstrap over blocks (<code>census/analyze.py: monthly_series</code>). The 3-month line pools three months of blocks for a tighter estimate. Before 2024 only one month per quarter is sampled.`);
   lineChart(h, { x, yMax: 1, series: [
     { name: "Monthly (95% interval)", values: col("tx_auto"), lo: col("tx_auto_lo"), hi: col("tx_auto_hi"), color: "--auto", w: 1.6 },
     { name: "3-month pooled", values: col("tx_auto_r3"), color: "--auto", w: 3.4, nodots: true },
@@ -396,15 +397,25 @@ $("take-fees").innerHTML = (LW.fee_init_auto && LW.fee_paid_auto) ? `Over ${span
 /* 04 fingerprint */
 const HR = R.hourly || {};
 if (HR.automated && HR.human && HR.automated.n && HR.human.n) {
-  const A = HR.automated, H = HR.human;
-  $("take-finger").innerHTML = `People have a day; software mostly doesn't. Pooling ${HR.periods[0]}–${HR.periods[HR.periods.length - 1]}, human-like accounts' busiest hour carries <b>${(H.peak_to_trough ?? NaN).toFixed(1)}×</b> the traffic of their quietest, against <b>${(A.peak_to_trough ?? NaN).toFixed(1)}×</b> for automated accounts. The classifier uses each account's own rest pattern, so this chart is the network-wide echo of it, not an independent test.`;
+  const A = HR.automated, H = HR.human, d = HR.rhythm_diff, v = HR.rhythm_verdict;
+  const rng = `${HR.periods[0]}–${HR.periods[HR.periods.length - 1]}`;
+  const s6 = x => pct(x, 0);
+  const gap = d ? `${pts(d.point, 0)} (95% interval ${pts(d.lo, 0)} to ${pts(d.hi, 0)})` : "n/a";
+  const lead = {
+    human_more_rhythmic: `People have a day; software has less of one. Pooling ${rng}, human-like accounts put <b>${s6(H.busiest_6h_share)}</b> of their transactions into their busiest 6 hours, against <b>${s6(A.busiest_6h_share)}</b> for automated accounts (a perfectly flat day would be 25%). The gap is ${gap}.`,
+    automated_more_rhythmic: `Surprisingly, automated accounts keep the more rhythmic day. Pooling ${rng}, they put <b>${s6(A.busiest_6h_share)}</b> of transactions into their busiest 6 hours versus <b>${s6(H.busiest_6h_share)}</b> for human-like accounts (gap ${gap}). Scheduled jobs and mini-app traffic can both be time-clustered.`,
+    no_clear_difference: `The data does not show a clear difference in daily rhythm. Pooling ${rng}, the busiest 6 hours hold <b>${s6(H.busiest_6h_share)}</b> of human-like and <b>${s6(A.busiest_6h_share)}</b> of automated transactions (gap ${gap}, the interval includes zero). That is reported as found: people are spread across time zones, and many automated accounts follow human-driven schedules.`,
+    not_testable: "Too few classified transactions to test daily rhythm."
+  }[v];
+  $("h-finger").textContent = { human_more_rhythmic: "People have a day; software has less of one", automated_more_rhythmic: "Software keeps a surprisingly strong daily rhythm", no_clear_difference: "No clear difference in daily rhythm", not_testable: "Daily rhythm" }[v];
+  $("take-finger").innerHTML = lead + ` The classifier uses each account's own rest pattern, so this chart is a network-wide cross-check, not an independent test.`;
   const h = card("c-hour", "Share of each class's transactions by UTC hour", `${A.n.toLocaleString()} automated and ${H.n.toLocaleString()} human-like sampled transactions.`,
-    `Hour of day of each sampled transaction's block time (UTC), split by the initiator's class (<code>census/insights.py: hourly</code>). People are spread across time zones, which blurs the human curve; a flatter line means less daily rhythm.`);
+    `Hour of day of each sampled transaction's block time (UTC), split by the initiator's class (<code>census/insights.py: hourly</code>). Rhythm is the share of a class's transactions in its busiest 6 consecutive hours; the interval is a bootstrap over transactions. People are spread across time zones, which blurs the human curve.`);
   lineChart(h, { x: [...Array(24).keys()], series: [
     { name: "Automated", values: A.share, color: "--auto", w: 2.6 },
     { name: "Human-like", values: H.share, color: "--human", w: 2.6 },
   ], xLabels: v => String(v).padStart(2, "0") + ":00", height: 300 });
-} else { $("take-finger").textContent = "Not enough classified transactions to draw the hourly profile."; $("c-hour").remove(); }
+} else { $("take-finger").textContent = "Not enough classified transactions to test daily rhythm."; $("c-hour").remove(); }
 
 /* 05 work */
 const RC = R.receivers || {};
@@ -479,7 +490,7 @@ if (T.n_classified) {
         <dt>Main receiver</dt><dd>${esc(short(v.top_receiver))}</dd><dt>Profiled as of</dt><dd>${v.period}</dd></dl></div>
       <div><div class="muted" style="font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin-bottom:4px">Rules that fired</div>
       ${v.fired.length ? v.fired.map(f => { const r = rule[f] || { points: 0, why: f }; return `<div class="rule"><span>${esc(r.why)}</span><span class="p ${r.points >= 0 ? "pos" : "neg"}">${r.points >= 0 ? "+" : ""}${r.points}</span></div>`; }).join("") : `<p class="muted">No rule fired.</p>`}
-      <p class="muted" style="font-size:13px;margin-top:8px">Score is the clipped sum (0–100); at or above 50 is automated. Account names are not an input.</p></div></div>`;
+      <p class="muted" style="font-size:13px;margin-top:8px">Score is the clipped sum (0–100); at or above ${P.threshold} is automated. Account names are not an input.</p></div></div>`;
   };
   $("q").addEventListener("input", e => show(e.target.value));
   document.addEventListener("click", e => { const a = e.target.closest("[data-acct]"); if (a) { $("q").value = a.dataset.acct; show(a.dataset.acct); } });

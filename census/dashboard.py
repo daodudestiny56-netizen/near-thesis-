@@ -23,7 +23,9 @@ def run() -> None:
     vpath = C.DERIVED / "validation.json"
     validation = json.loads(vpath.read_text()) if vpath.exists() else {}
     rules = [{"name": r.name, "points": r.points, "why": r.why} for r in RULES]
-    payload = json.dumps(jsonable({"results": results, "validation": validation, "rules": rules}),
+    payload = json.dumps(jsonable({"results": results, "validation": validation, "rules": rules,
+                                "params": {"blocks": C.BLOCKS_PER_PERIOD, "tx_cap": C.MAX_TX_PER_PERIOD, "history": C.HISTORY_LIMIT,
+                                           "bootstrap": C.BOOTSTRAP_RESAMPLES, "threshold": C.AUTOMATED_THRESHOLD, "min_obs": C.MIN_OBS}}),
                          allow_nan=False).replace("</", "<\\/")
     font = base64.b64encode((C.ROOT / "census" / "assets" / "BricolageGrotesque-latin.woff2").read_bytes()).decode()
     face = ('@font-face{font-family:"Bricolage Grotesque";font-style:normal;font-weight:200 800;font-display:swap;'

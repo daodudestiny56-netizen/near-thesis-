@@ -27,21 +27,41 @@ def recent_periods(periods: list[str], n: int = 6) -> list[str]:
     return sorted(periods)[-n:]
 
 
+def _busiest_6h(hours: np.ndarray) -> float:
+    c = np.bincount(hours, minlength=24) / max(len(hours), 1)
+    return float(max(sum(c[(h + k) % 24] for k in range(6)) for h in range(24)))
+
+
 def hourly(txs: pd.DataFrame, periods: list[str]) -> dict:
+    """UTC hour-of-day profile per class, plus a bootstrap test of which class has the stronger daily rhythm.
+
+    Rhythm = share of a class's transactions falling in its busiest 6 consecutive hours (25% if perfectly flat).
+    The verdict is decided from the 95% interval of (human-like minus automated), so a null result is reported as such.
+    """
     t = txs[txs["period"].isin(periods)].copy()
-    t["hour"] = (t["ts"] // 3600) % 24
+    t["hour"] = ((t["ts"] // 3600) % 24).astype(int)
     out = {"periods": periods}
+    hrs = {}
     for name, klass in (("automated", AUTO), ("human", HUMAN)):
-        c = t[t["init_class"] == klass].groupby("hour").size().reindex(range(24), fill_value=0)
+        h = t.loc[t["init_class"] == klass, "hour"].to_numpy()
+        hrs[name] = h
+        c = np.bincount(h, minlength=24)
         n = int(c.sum())
         share = (c / n).tolist() if n else [0.0] * 24
-        nz = [x for x in share if x > 0]
         out[name] = {"n": n, "share": share,
-                     "peak_hour": int(np.argmax(share)) if n else None,
-                     "trough_hour": int(np.argmin(share)) if n else None,
                      "peak_to_trough": (max(share) / min(share)) if n and min(share) > 0 else None,
-                     "busiest_6h_share": max(sum(share[(h + k) % 24] for k in range(6)) for h in range(24)) if n else None,
-                     "hours_with_activity": len(nz)}
+                     "busiest_6h_share": _busiest_6h(h) if n else None,
+                     "hours_with_activity": int((c > 0).sum())}
+    verdict, diff = "not_testable", None
+    if len(hrs["automated"]) >= 50 and len(hrs["human"]) >= 50:
+        rng = np.random.default_rng(C.BOOTSTRAP_SEED + 3)
+        draws = [_busiest_6h(rng.choice(hrs["human"], len(hrs["human"]))) - _busiest_6h(rng.choice(hrs["automated"], len(hrs["automated"])))
+                 for _ in range(500)]
+        lo, hi = np.percentile(draws, [2.5, 97.5])
+        point = out["human"]["busiest_6h_share"] - out["automated"]["busiest_6h_share"]
+        diff = {"point": float(point), "lo": float(lo), "hi": float(hi)}
+        verdict = "human_more_rhythmic" if lo > 0 else "automated_more_rhythmic" if hi < 0 else "no_clear_difference"
+    out["rhythm_verdict"], out["rhythm_diff"] = verdict, diff
     return out
 
 
