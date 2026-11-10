@@ -68,11 +68,11 @@ def build() -> dict:
     )
     cov = f"{sw['b']['burn_cover'] * 100:.1f}%" if sw else None
     post1 = (f"Software-like accounts initiate {pct(a['point'])} of NEAR transactions, but total activity fell {tt['per_s_a']:.0f} -> {tt['per_s_b']:.0f} tx/s. "
-             f"Fee burn covers {cov} of issuance, Intents revenue {pct(vw['b']['revenue_cover'])}.\n\n"
-             "Live account checker + 8 predictions frozen & timestamped.\n\nBuilt at NEAR HACKATHON @NEARProtocol #NEARHackathon") if (tt and vw.get("b")) else (
+             f"Fee burn covers {cov} of issuance; Intents revenue {pct(vw['b']['revenue_cover'])}.\n\n"
+             f"Try it live: {LIVE}\nCode: {REPO}\n\nBuilt at NEAR HACKATHON @NEARProtocol #NEARHackathon") if (tt and vw.get("b")) else (
              f"Software-like accounts initiate {pct(a['point'])} of NEAR transactions (95% CI {pct(a['lo'])}-{pct(a['hi'])}).\n\nBuilt at NEAR HACKATHON @NEARProtocol #NEARHackathon")
-    post2 = ("Every number is re-runnable (CI green on Linux), every verdict decided by code. Try any NEAR account live in your browser:\n\n"
-             f"Live: {LIVE}\nCode: {REPO}\n\nWhich metric should we add next?")
+    post2 = ("What is in it: a live in-browser checker for any NEAR account, every verdict decided by code, CI on Linux, and 8 predictions for December "
+             "frozen with a SHA-256 in the repo.\n\nWhich metric should we add next?")
     return {"idea": idea, "post1": post1, "post2": post2, "verdicts": verdicts}
 
 
