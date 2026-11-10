@@ -196,7 +196,7 @@ month containing a block with version ≥ 87.
 **The live checker** (dashboard, "Verify it yourself") is a JavaScript port of `census/features.py` and `census/classify.py`. It scores an account from its latest 200
 signed transactions as of now, omits the call-shape rule (which needs full transactions), and is **tested to match the Python output exactly** (score, class, the
 rules that fired, and every numeric feature to 1e-9) on 30 real accounts: `tests/test_supply.py`, fixture `tests/fixtures/live_parity.json`. Its example chips include
-one account the pipeline gets wrong, labelled as a known miss.
+one account the validation got wrong, labelled as such; a live result can differ from the validation because the validation uses month-end windows and the checker uses the latest 200 transactions.
 
 ## 12. What would change the conclusion
 

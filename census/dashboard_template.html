@@ -627,23 +627,32 @@ window.__census = { histFeatures, scoreFeatures, classifyRows, ruleNames: () => 
 {
   const s = $("c-live"), ACCT = /^(([a-z\d]+[-_])*[a-z\d]+\.)*([a-z\d]+[-_])*[a-z\d]+$/;
   const LX = V.live_examples || {};
-  const ex = [[LX.automated, "automated, correct"], [LX.human, "human, correct"], [LX.miss, "known miss"]].filter(([a]) => a);
+  const ex = [[LX.automated, "automated, correct"], [LX.human, "human, correct"], [LX.miss, "missed in validation"]].filter(([a]) => a);
   s.innerHTML = `<h3>Is this account software? Try any NEAR account, live</h3><p class="sub">Your browser fetches the account's latest 200 signed transactions from the public FastNEAR API and scores them with the same rules as the pipeline. No server of ours is involved.</p>
     <div class="lookup"><input id="live-q" placeholder="e.g. ${esc((ex[0] || [])[0] || "account.near")}" autocomplete="off" aria-label="NEAR account id"><button class="btn primary" id="live-go" type="button">Check live</button></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:-4px 0 12px"><span class="muted" style="font-size:13px;align-self:center">Examples (picked from the labelled set, including one the classifier gets wrong):</span>${ex.map(([a, why]) => `<button class="ex" data-live="${esc(a)}" type="button" title="${esc(a)}">${esc(short(a, 24))} <span class="muted">· ${why}</span></button>`).join("")}</div><div id="live-out"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:-4px 0 12px"><span class="muted" style="font-size:13px;align-self:center">Examples from the labelled set, including one the validation got wrong (a live result can differ, because the validation uses month-end windows):</span>${ex.map(([a, why]) => `<button class="ex" data-live="${esc(a)}" type="button" title="${esc(a)}">${esc(short(a, 24))} <span class="muted">· ${why}</span></button>`).join("")}</div><div id="live-out"></div>
     <p class="muted" style="font-size:13px">Behaviour only, over the latest 200 signed transactions as of now (the pipeline uses month-end windows). This checker omits the call-shape rule, which needs full transactions. It is not an identity judgement: a high score means the account behaves like software.</p>`;
   const out = $("live-out"), rule = Object.fromEntries(RULES.map(r => [r.name, r]));
   async function check(raw) {
     const acct = raw.trim().toLowerCase();
     if (!ACCT.test(acct) || acct.length < 2 || acct.length > 64) { out.innerHTML = `<p class="muted">That is not a valid NEAR account id.</p>`; return; }
     out.innerHTML = `<p class="muted">Fetching ${esc(acct)}…</p>`;
-    let res;
-    try {
-      const r = await fetch("https://tx.main.fastnear.com/v0/account", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ account_id: acct, is_real_signer: true, desc: true, limit: 200 }) });
-      if (r.status === 429) { out.innerHTML = `<p class="muted">The public API is rate-limiting right now. Wait a few seconds and try again.</p>`; return; }
-      if (!r.ok) throw new Error("HTTP " + r.status);
-      res = await r.json();
-    } catch (e) { out.innerHTML = `<p class="muted">Could not reach the API from this page (${esc(e.message || "network error")}). Open the hosted dashboard, or run <code>python -m census</code> locally.</p>`; return; }
+    // The public API rate-limits anonymous browsers, including the CORS preflight, and a refused preflight surfaces as "Failed to fetch".
+    // So transient failures are retried with backoff, as a person would do by clicking again.
+    let res, lastErr = "";
+    for (let attempt = 0; attempt < 5 && !res; attempt++) {
+      if (attempt) {
+        out.innerHTML = `<p class="muted">The public API is busy (it rate-limits browsers). Retrying ${attempt}/4 for ${esc(acct)}…</p>`;
+        await new Promise(r => setTimeout(r, [0, 1500, 2500, 4000, 6000][attempt]));
+      }
+      try {
+        const r = await fetch("https://tx.main.fastnear.com/v0/account", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ account_id: acct, is_real_signer: true, desc: true, limit: 200 }) });
+        if (r.status === 429) { lastErr = "rate limited"; continue; }
+        if (!r.ok) { lastErr = "HTTP " + r.status; break; }
+        res = await r.json();
+      } catch (e) { lastErr = e.message || "network error"; }
+    }
+    if (!res) { out.innerHTML = `<p class="muted">Could not get a response after several tries (${esc(lastErr)}). The public API rate-limits browsers, so wait a few seconds and press <b>Check live</b> again.</p>`; return; }
     const rows = (res.account_txs || []).map(x => ({ ts: x.tx_block_timestamp, ok: (x.is_success ?? true) !== false && x.is_success !== null, fc: !!x.is_function_call, deleg: !!x.is_delegated_signer }));
     const c = classifyRows(rows, res.txs_count), f = c.features, kc = c.klass === "automated" ? "auto" : c.klass === "human" ? "hum" : "info";
     const nf = (v, d = 2) => NOK(v) ? v.toFixed(d) : "needs ≥ 2 days";
