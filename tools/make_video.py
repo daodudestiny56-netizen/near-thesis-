@@ -82,41 +82,41 @@ def main() -> None:
 
         # 1. hook ------------------------------------------------------------------------------------------
         card("<h1>How much of NEAR<br>is software?</h1><p>A random-sample census with error bars, not a guess.</p>")
-        page.wait_for_timeout(4200)
+        page.wait_for_timeout(4000)
         # 2. headline ---------------------------------------------------------------------------------------
         hide_card(); page.evaluate("window.scrollTo(0,0)")
-        cap(f"{pct(lw['tx_auto']['point'])} of sampled NEAR transactions were initiated by software-like accounts "
-            f"(95% CI {pct(lw['tx_auto']['lo'])}-{pct(lw['tx_auto']['hi'])}). Across classifier cut-offs: {pct(lw['tx_auto_t60']['point'])}-{pct(lw['tx_auto_t40']['point'])}.")
-        page.wait_for_timeout(7000)
-        # 3. trend --------------------------------------------------------------------------------------------
-        goto("#c-share"); page.wait_for_timeout(800)
-        cap("Every point carries its interval. Strict and lenient cut-offs are shown, not hidden.")
-        sweep("#c-share"); page.wait_for_timeout(900)
-        # 4. fingerprint ------------------------------------------------------------------------------------
-        if page.locator("#c-hour").count():
-            goto("#c-hour"); page.wait_for_timeout(700)
-            cap({"human_more_rhythmic": "People keep a daily rhythm; software has less of one. Tested with a bootstrap, not eyeballed.",
-                 "automated_more_rhythmic": "Surprise: automated traffic keeps the stronger daily rhythm. Reported as found.",
-                 "no_clear_difference": "Do software and people keep different hours? No clear difference, and we report that as found.",
-                 }.get(res["hourly"].get("rhythm_verdict"), "Daily rhythm of automated vs human-like activity."))
-            sweep("#c-hour", steps=22); page.wait_for_timeout(1200)
+        cap(f"{pct(lw['tx_auto']['point'])} of sampled NEAR transactions come from software-like accounts "
+            f"(95% CI {pct(lw['tx_auto']['lo'])}-{pct(lw['tx_auto']['hi'])}). Fees they initiate: {pct(lw['fee_init_auto']['point'])}.")
+        page.wait_for_timeout(6200)
+        # 3. share over time -----------------------------------------------------------------------------------
+        goto("#c-share"); page.wait_for_timeout(700)
+        cap("And the share jumped in 2026. Every point carries its interval.")
+        sweep("#c-share", steps=24); page.wait_for_timeout(500)
+        # 4. the twist: absolute activity ------------------------------------------------------------------
+        ab = (res.get("windows") or {}).get("abs") or {}
+        if ab.get("total_tx_per_block") and page.locator("#c-abs-tx").count():
+            tt, at = ab["total_tx_per_block"], ab["auto_tx_per_block"]
+            goto("#c-abs-tx", dy=-70); page.wait_for_timeout(700)
+            cap(f"But total activity fell from {tt['per_s_a']:.0f} to {tt['per_s_b']:.0f} tx/s, and automated from {at['per_s_a']:.0f} to {at['per_s_b']:.0f}. "
+                "The share rose because human-like activity fell faster.")
+            sweep("#c-abs-tx", steps=26, ms=100); page.wait_for_timeout(2400)
         # 5. verify -------------------------------------------------------------------------------------------
-        goto("#c-lookup", dy=-80); page.wait_for_timeout(700)
-        cap("Verify it yourself: any account's verdict shows the exact rules that fired. No black box.")
-        page.wait_for_timeout(4800)
-        goto("#c-spot", dy=-80); page.wait_for_timeout(600)
+        goto("#c-lookup", dy=-80); page.wait_for_timeout(600)
+        cap("Verify it yourself: any account's verdict shows the exact rules that fired.")
+        page.wait_for_timeout(4200)
+        goto("#c-spot", dy=-80); page.wait_for_timeout(500)
         cap("Every sampled transaction links to a public explorer.")
-        page.wait_for_timeout(3600)
+        page.wait_for_timeout(3200)
         # 6. thesis -------------------------------------------------------------------------------------------
-        goto("#c-claims", dy=-90); page.wait_for_timeout(700)
+        goto("#c-claims", dy=-90); page.wait_for_timeout(600)
         n = {v: sum(1 for c in res.get("claims", []) if c["verdict"] == v) for v in ("supported", "not_supported", "inconclusive")}
         cap(f"The thesis, tested by code: {n['supported']} supported, {n['not_supported']} not supported, {n['inconclusive']} inconclusive. Evidence, not conviction.")
-        page.wait_for_timeout(6000)
+        page.wait_for_timeout(5200)
         # 7. close ---------------------------------------------------------------------------------------------
         cap("")
         card("<h1>One command rebuilds every number</h1><p>Evidence, not conviction.</p><code>python -m census reproduce</code>"
              "<p style='margin-top:26px;font-size:24px'>github.com/daodudestiny56-netizen/near-thesis-</p>")
-        page.wait_for_timeout(5000)
+        page.wait_for_timeout(4500)
         end = time.time() - t0
         ctx.close()
         webm = next(tmp.glob("*.webm"))

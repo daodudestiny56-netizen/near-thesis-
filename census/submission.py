@@ -63,16 +63,25 @@ def build() -> dict:
         "who acts from who pays, function-call keys shape agent behaviour, and NEAR Intents traffic is measured. "
         "One command, python -m census reproduce, rebuilds every number offline. Automated includes AI agents but cannot isolate them. Not investment advice."
     )
-    post1 = (
-        f"Is NEAR becoming the chain software lives on? We measured it.\n\n"
-        f"In a random sample of {g['blocks']:,} NEAR blocks, software-like accounts initiated {pct(a['point'])} of transactions "
-        f"(95% CI {pct(a['lo'])}-{pct(a['hi'])}). Every number re-runnable.\n\n"
-        f"Built at NEAR HACKATHON @NEARProtocol #NEARHackathon"
-    )
+    if ab.get("total_tx_per_block") and ab.get("auto_tx_per_block"):
+        tt, at = ab["total_tx_per_block"], ab["auto_tx_per_block"]
+        post1 = (
+            f"Software-like accounts initiate {pct(a['point'])} of NEAR transactions (95% CI {pct(a['lo'])}-{pct(a['hi'])}).\n\n"
+            f"But total activity fell {tt['per_s_a']:.0f} -> {tt['per_s_b']:.0f} tx/s: the share rose because everything else shrank faster.\n\n"
+            f"Random-sample census, every number re-runnable. Built at NEAR HACKATHON @NEARProtocol #NEARHackathon"
+        )
+    else:
+        post1 = (
+            f"Is NEAR becoming the chain software lives on? We measured it.\n\n"
+            f"In a random sample of {g['blocks']:,} NEAR blocks, software-like accounts initiated {pct(a['point'])} of transactions "
+            f"(95% CI {pct(a['lo'])}-{pct(a['hi'])}). Every number re-runnable.\n\n"
+            f"Built at NEAR HACKATHON @NEARProtocol #NEARHackathon"
+        )
+    intents = ab.get("intents_tx_per_block")
     post2 = (
-        f"What NEAR enables: public per-account history, meta-tx that split who acts from who pays (software-like accounts initiated "
-        f"{pct(fi['point'])} of fees, paid {pct(fp['point'])}), and Intents traffic you can measure.\n\n"
-        f"Verify any claim from the dashboard. Which metric should we add next?\n\n{REPO}"
+        f"On NEAR, meta-tx split who acts from who pays: software-like accounts initiated {pct(fi['point'])} of fees but paid {pct(fp['point'])}."
+        + (f" Intents traffic: {intents['per_s_a']:.1f} -> {intents['per_s_b']:.1f} tx/s." if intents else "")
+        + f"\n\nVerify any claim on the dashboard. Which metric should we add next?\n\n{REPO}"
     )
     return {"idea": idea, "post1": post1, "post2": post2, "verdicts": verdicts}
 
