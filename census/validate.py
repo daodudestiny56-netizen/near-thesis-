@@ -135,6 +135,14 @@ def run(dev_only: bool = False) -> None:
     fpr = 1 - t["recall_human"] if not math.isnan(t["recall_human"]) else float("nan")
     out["rates_for_correction"] = {"tpr": t["recall_automated"], "fpr": fpr}
 
+    # Demo accounts for the live checker. Chosen deliberately and labelled as such: one labelled automated and one labelled human account
+    # that the pipeline classifies correctly with plenty of history, plus one labelled account it gets wrong (a known miss).
+    good = df[(df["klass"] == df["label"]) & (df["n_obs"] >= 100)]
+    wrong = df[(df["klass"] != "low_activity") & (df["klass"] != df["label"]) & (df["n_obs"] >= 100)]
+    pick = lambda frame, **kw: (frame.sort_values("score", **kw).account.head(1).tolist() or [None])[0]
+    out["live_examples"] = {"automated": pick(good[good["label"] == "automated"], ascending=False),
+                            "human": pick(good[good["label"] == "human"], ascending=True),
+                            "miss": pick(wrong[wrong["label"] == "automated"], ascending=False) or pick(wrong, ascending=False)}
     path = C.DERIVED / "validation.json"
     path.write_text(json.dumps(jsonable(out), indent=1))
     print(f"TEST  n={t['n_labelled']} classified={t['n_classified']} "

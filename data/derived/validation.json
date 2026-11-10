@@ -172,5 +172,10 @@
  "rates_for_correction": {
   "tpr": 0.85,
   "fpr": 0.008264462809917328
+ },
+ "live_examples": {
+  "automated": "jars-oracle.sweat",
+  "human": "abdulhayyu.near",
+  "miss": "watcher06.ref-watchdog.near"
  }
 }

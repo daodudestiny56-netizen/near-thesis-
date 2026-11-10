@@ -89,6 +89,36 @@ ROC AUC of the raw score on the test split: **0.99**. Wilson 95% intervals in br
 **Bottom line.** Software's share of NEAR activity rose, but software activity did not. The share rose because the rest of the activity (classified human-like) fell faster than automated activity did. Total activity went 64.4 → 8.0 tx/s, automated 14.9 → 4.9 tx/s, human-like 42.8 → 2.9 tx/s; fee burn by automated accounts 0.0102 → 0.0059 NEAR/s. The relayed share of transactions went 36% → 42%. The data therefore supports "NEAR activity is increasingly dominated by software" and does not support "software activity on NEAR is growing".
 
 
+## Supply, burn and value capture
+
+**Net issuance step.** Measured from block-header supply, net issuance fell from 1.98 NEAR/s (4.91% of supply per year) in 2025-10 to 0.98 NEAR/s (2.41% per year) in 2025-11 (intervals disjoint). The cause is not determined here.
+
+| Window | Net issuance | Estimated burn | Gross issuance | Burn / gross issuance |
+|---|---|---|---|---|
+| 2024-01 to 2024-06 | 1.784 NEAR/s | 0.0297 NEAR/s | 1.814 NEAR/s | 1.64% (1.53%-1.75%) |
+| 2026-06 to 2026-11 | 1.020 NEAR/s | 0.0059 NEAR/s | 1.026 NEAR/s | 0.58% (0.50%-0.67%) |
+
+Burn = block-header fee x 0.70 on protocol <= v86 (contracts received 30% of burnt gas) and x 1.00 from v87, per NEAR's gas docs. Gross issuance = net issuance + burn.
+
+**Intents revenue (third-party: DefiLlama snapshot, used as published) against issuance valued at the average NEAR price:**
+
+| Window | NEAR price | Intents revenue/day | Issuance/day | L1 fees/day | Revenue / issuance | Revenue / L1 fees |
+|---|---|---|---|---|---|---|
+| 2025-06 to 2025-11 | $2.48 | $4,267 | $394,486 | $7,735 | 1.1% | x0.6 |
+| 2026-06 to 2026-11 | $2.97 | $39,879 | $263,558 | $2,224 | 15.1% | x17.9 |
+
+Snapshot retrieved 2026-11-10. Per DefiLlama, Intents revenue is NEAR's net captured revenue and, since 2026-02-23, is used for open-market buybacks, not burned.
+
+## Breakpoints detected from the data
+
+| Kind | Month | Change |
+|---|---|---|
+| activity_rise | 2024-02 | activity x1.88 |
+| activity | 2026-04 | activity x0.21 |
+| issuance | 2025-11 | issuance x0.49 |
+| v87 | 2026-11 | protocol v87 first seen |
+
+
 ## Concentration
 
 5 of 94 automated accounts account for half of automated transactions sampled in 2026-06–2026-11.

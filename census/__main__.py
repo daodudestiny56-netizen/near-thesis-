@@ -3,11 +3,13 @@
   collect     draw the block sample from the FastNEAR API (slow; resumable)
   classify    score every account and tag every sampled transaction
   validate    measure the classifier against the hand-labelled set
-  analyze     compute shares over time, fee payers and the forecast
+  analyze     compute shares, absolute levels, supply/issuance and breakpoints
   thesis      evaluate every claim and write THESIS.md
   report      write RESULTS.md
   dashboard   write docs/index.html
   submission  draft the form text and X posts into submission/ (git-ignored)
+  external    refresh the third-party snapshot in data/external/ (DefiLlama: Intents revenue, NEAR price); needs internet
+  enrich      add total_supply / protocol_version to months collected before the collector stored them (from the cache)
   reproduce   classify -> validate -> analyze -> thesis -> report -> dashboard from the committed data (offline, ~1 min)
 """
 import argparse
@@ -24,7 +26,7 @@ def main() -> None:
     c.add_argument("--blocks", type=int, default=C.BLOCKS_PER_PERIOD, help="random blocks per month")
     v = sub.add_parser("validate")
     v.add_argument("--dev-only", action="store_true", help="tuning mode: score and print the DEV split only")
-    for name in ("classify", "analyze", "thesis", "report", "dashboard", "submission", "reproduce", "merge"):
+    for name in ("classify", "analyze", "thesis", "report", "dashboard", "submission", "reproduce", "merge", "external", "enrich"):
         sub.add_parser(name)
     args = p.parse_args()
 
@@ -34,6 +36,12 @@ def main() -> None:
     elif args.cmd == "merge":
         from .collect import merge
         merge()
+    elif args.cmd == "external":
+        from .external import run
+        run()
+    elif args.cmd == "enrich":
+        from .enrich import run
+        run()
     elif args.cmd == "classify":
         from .classify import run
         run()

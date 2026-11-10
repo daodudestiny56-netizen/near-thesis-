@@ -123,6 +123,17 @@ td.n, th.n { text-align: right; }
 .rule { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 14.5px; }
 .rule .p { font-weight: 700; font-variant-numeric: tabular-nums; } .rule .p.pos { color: var(--auto); } .rule .p.neg { color: var(--human); }
 .muted { color: var(--ink-3); }
+.calc { display: grid; grid-template-columns: 1.1fr .9fr; gap: 26px; align-items: start; }
+.calc label { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; font-size: 14.5px; color: var(--ink-2); margin-bottom: 14px; }
+.calc label b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.calc input[type=range] { grid-column: 1 / 3; width: 100%; accent-color: var(--auto); }
+.gauge { height: 16px; background: var(--surface-2); border-radius: 8px; position: relative; overflow: hidden; margin: 10px 0 6px; border: 1px solid var(--line); }
+.gauge i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--auto); border-radius: 8px 0 0 8px; }
+.gauge u { position: absolute; right: 0; top: 0; bottom: 0; width: 2px; background: var(--ink); }
+.bigpct { font-size: 56px; font-weight: 750; letter-spacing: -.04em; line-height: 1; color: var(--auto); font-variant-numeric: tabular-nums; }
+.ex { font: 600 13px "Bricolage Grotesque", sans-serif; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); border-radius: 999px; padding: 5px 12px; cursor: pointer; }
+.ex:hover { border-color: var(--ink-3); }
+@media (max-width: 860px) { .calc { grid-template-columns: 1fr; } }
 footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 28px 0 56px; font-size: 14px; color: var(--ink-3); display: grid; gap: 10px; }
 @media (max-width: 860px) { .hero, .grid2 { grid-template-columns: 1fr; } nav .links { display: none; } .hero { padding-top: 34px; } nav .wrap { justify-content: space-between; } }
 @media print { nav { display: none; } .card, .tile, .big { box-shadow: none; } }
@@ -132,7 +143,7 @@ footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 28px 0 56
 <nav><div class="wrap">
   <a class="brand" href="#top"><i></i>NEAR Agent Census</a>
   <div class="links">
-    <a href="#how">Method</a><a href="#trend">Share</a><a href="#absolute">Absolute</a><a href="#fees">Fees</a><a href="#finger">Fingerprint</a><a href="#work">Software at work</a><a href="#trust">Trust</a><a href="#verify">Verify</a><a href="#thesis">Thesis</a>
+    <a href="#how">Method</a><a href="#trend">Share</a><a href="#absolute">Absolute</a><a href="#value">Value</a><a href="#fees">Fees</a><a href="#finger">Hours</a><a href="#work">Work</a><a href="#trust">Trust</a><a href="#verify">Verify</a><a href="#thesis">Thesis</a>
   </div>
   <button class="btn" id="theme" type="button" aria-label="Toggle dark mode">◐ Theme</button>
   <a class="btn primary" href="https://github.com/daodudestiny56-netizen/near-thesis-" target="_blank" rel="noopener">Code ↗</a>
@@ -193,22 +204,32 @@ footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 28px 0 56
   <div class="card" id="c-abs-tbl"></div>
 </section>
 
+<section id="value">
+  <div class="sec-h"><span class="no">07</span><h2>Does usage pay for issuance?</h2></div>
+  <p class="take" id="take-val"></p>
+  <div class="card" id="c-iss"></div>
+  <div class="card" id="c-cover"></div>
+  <div class="card" id="c-val-tbl"></div>
+  <div class="card" id="c-whatif"></div>
+</section>
+
 <section id="trust">
-  <div class="sec-h"><span class="no">07</span><h2>How far to trust the classifier</h2></div>
+  <div class="sec-h"><span class="no">08</span><h2>How far to trust the classifier</h2></div>
   <p class="take" id="take-trust"></p>
   <div class="card" id="c-valid"></div>
   <div class="card" id="c-abl"></div>
 </section>
 
 <section id="verify">
-  <div class="sec-h"><span class="no">08</span><h2>Verify it yourself</h2></div>
-  <p class="take">Don't take the dashboard's word for it. Every row below is a real transaction from the sample. Click through to a public explorer, or look up any profiled account and see <b>exactly which rules produced its verdict</b>.</p>
+  <div class="sec-h"><span class="no">09</span><h2>Verify it yourself</h2></div>
+  <p class="take">Don't take the dashboard's word for it. Every row below is a real transaction from the sample. Click through to a public explorer, look up any profiled account and see <b>exactly which rules produced its verdict</b>, or <b>try any NEAR account live</b> in your browser.</p>
+  <div class="card" id="c-live"></div>
   <div class="card" id="c-lookup"></div>
   <div class="card" id="c-spot"></div>
 </section>
 
 <section id="thesis">
-  <div class="sec-h"><span class="no">09</span><h2>The thesis, tested</h2></div>
+  <div class="sec-h"><span class="no">10</span><h2>The thesis, tested</h2></div>
   <p class="take" id="take-thesis"></p>
   <div class="card" id="c-claims"></div>
   <div class="card" id="c-mind"></div>
@@ -259,7 +280,7 @@ function card(id, title, sub, how) {
   return { chart: s.querySelector("[data-chart]"), tip: s.querySelector("[data-tip]"), legend: s.querySelector("[data-legend]"), table: s.querySelector("[data-table]") };
 }
 
-function lineChart(host, { x, series, yMax, yFmt = pct, height = 320, xLabels, xNum }) {
+function lineChart(host, { x, series, yMax, yFmt = pct, height = 320, xLabels, xNum, vlines = [] }) {
   const W = 1000, H = height, m = { l: 52, r: 18, t: 12, b: 30 };
   const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": series.map(s => s.name).join(", ") });
   const iw = W - m.l - m.r, ih = H - m.t - m.b;
@@ -280,6 +301,11 @@ function lineChart(host, { x, series, yMax, yFmt = pct, height = 320, xLabels, x
     const want = xNum ? (i === 0 || i === x.length - 1 || /-(01|07)$/.test(String(p))) && X(i) - lastLab > 78 && (i === x.length - 1 || X(x.length - 1) - X(i) > 70 || i === 0)
                       : (i % step === 0 || i === x.length - 1);
     if (want) { lastLab = X(i); const g = el("g", { class: "axis" }, svg); el("text", { x: X(i), y: H - 8, "text-anchor": i === x.length - 1 ? "end" : i === 0 ? "start" : "middle" }, g).textContent = xLabels ? xLabels(p) : p; }
+  });
+  vlines.forEach((v, k) => {
+    const i = x.indexOf(v.at); if (i < 0) return; const px = X(i), right = px > W * 0.7;
+    el("line", { x1: px, x2: px, y1: m.t, y2: m.t + ih, stroke: css("--ink-3"), "stroke-dasharray": "3 4", "stroke-width": 1 }, svg);
+    el("text", { x: right ? px - 5 : px + 5, y: m.t + 12 + (k % 3) * 13, fill: css("--ink-3"), "font-size": 11.5, "text-anchor": right ? "end" : "start" }, svg).textContent = v.label;
   });
   series.forEach(s => {
     if (s.lo && s.hi) runs.forEach(run => {
@@ -336,6 +362,7 @@ function barChart(host, rows, { fmt = pct, min = 0, max = 1, labelW = 290, rowH 
 }
 
 const x = M.map(r => r.period), col = k => M.map(r => r[k] ?? null), mn = p => +p.slice(0, 4) * 12 + +p.slice(5, 7), xn = x.map(mn);
+const VL = (R.regimes || []).map(g => ({ at: g.at, label: g.label }));   // breakpoints detected from the data (census/analyze.py)
 const chip = v => ({ supported: ["ok", "✓ SUPPORTED"], not_supported: ["bad", "✕ NOT SUPPORTED"], inconclusive: ["mid", "◐ INCONCLUSIVE"], info: ["info", "• DESCRIPTIVE"] }[v] || ["info", v]);
 
 /* hero */
@@ -371,7 +398,7 @@ $("take-share").innerHTML = lwA ? `Over ${spanTxt}, <b>${pct(lwA.point)}</b> of 
 {
   const h = card("c-share", "Automated share of transactions over time", "Monthly estimate with 95% interval, the 3-month pooled estimate, and the strict and lenient cut-offs.",
     `Each month: ${P.blocks} random blocks; every transaction's real signer is classified from its own history; share = automated txs ÷ all txs over the sampled blocks; the interval is a cluster bootstrap over blocks (<code>census/analyze.py: monthly_series</code>). The 3-month line pools three months of blocks for a tighter estimate. Before 2024 only four baseline months are sampled (2022-01, 2022-07, 2023-01, 2023-07), with more blocks each because early blocks hold few transactions.`);
-  lineChart(h, { x, xNum: xn, yMax: 1, series: [
+  lineChart(h, { x, xNum: xn, yMax: 1, vlines: VL, series: [
     { name: "Monthly (95% interval)", values: col("tx_auto"), lo: col("tx_auto_lo"), hi: col("tx_auto_hi"), color: "--auto", w: 1.6 },
     { name: "3-month pooled", values: col("tx_auto_r3"), color: "--auto", w: 3.4, nodots: true },
     { name: "Strict cut-off (60)", values: col("tx_auto_t60"), color: "--neutral", dash: "5 5", w: 1.6, nodots: true },
@@ -395,7 +422,7 @@ $("take-fees").innerHTML = (LW.fee_init_auto && LW.fee_paid_auto) ? `Over ${span
 {
   const h = card("c-fees", "Fees initiated vs fees paid by automated accounts", "Share of fees (tokens burnt) over time.",
     `Fee = the indexer's per-transaction <code>tokens_burnt</code> (in a 6-transaction cross-check about 88% of the full receipt-tree sum; shares are used for that reason). <i>Initiated</i> classifies the real signer; <i>paid</i> classifies the on-chain signer, i.e. the relayer for relayed transactions. Protocol v87 changed burning (contracts previously received 30% of burnt gas, now all of it is burned), so fee <i>levels</i> are not comparable across it.`);
-  lineChart(h, { x, xNum: xn, yMax: 1, series: [
+  lineChart(h, { x, xNum: xn, yMax: 1, vlines: VL, series: [
     { name: "Initiated by automated (95% interval)", values: col("fee_init_auto"), lo: col("fee_init_auto_lo"), hi: col("fee_init_auto_hi"), color: "--auto", w: 2 },
     { name: "Paid by automated accounts", values: col("fee_paid_auto"), color: "--paid", w: 2 },
   ]});
@@ -459,14 +486,14 @@ $("take-work").innerHTML = RC.automated && RC.automated.length ? `What do softwa
     $("take-abs").innerHTML = `A share is a ratio, so it rises when the denominator falls. ${R.bottom_line ? esc(R.bottom_line).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>") : ""} All rates below are per second, using each month's own measured block time (${AB._sec_per_block.a.toFixed(2)} s per block in ${WIN.a[0]}–${WIN.a[WIN.a.length - 1]}, ${AB._sec_per_block.b.toFixed(2)} s in ${WIN.b[0]}–${WIN.b[WIN.b.length - 1]}).`;
     let h = card("c-abs-tx", "Transactions per second, by class", "Monthly estimate. Share × the block headers' own transaction counts, bootstrapped over blocks.",
       "Absolute level = (share of sampled transactions in a class) × (mean transactions per block, from every sampled block's header) ÷ (seconds per block). Interval = bootstrap over blocks (<code>census/analyze.py: _boot_scaled</code>). Before 2024 only four baseline months are sampled and the line is broken between them.");
-    lineChart(h, { x, xNum: xn, yFmt: (v) => rate(v) + "/s", series: [
+    lineChart(h, { x, xNum: xn, vlines: VL, yFmt: (v) => rate(v) + "/s", series: [
       { name: "All transactions", values: ps("total_tx_per_block_ps"), color: "--neutral", w: 2.4, nodots: true },
       { name: "Automated (95% interval)", values: ps("auto_tx_per_block_ps"), lo: ps("auto_tx_per_block_ps_lo"), hi: ps("auto_tx_per_block_ps_hi"), color: "--auto", w: 2.6, nodots: true },
       { name: "Human-like", values: ps("human_tx_per_block_ps"), color: "--human", w: 2.4, nodots: true },
     ]});
     h = card("c-abs-fee", "Fee burn per second (NEAR)", "Total, and the part initiated by automated accounts.",
       "Fee = the indexer's per-transaction tokens burnt. Total fee per block comes from every sampled block's header; the automated part multiplies it by the automated share of sampled fees. Levels are not comparable across protocol v87 (contracts received 30% of burnt gas before it, none after).");
-    lineChart(h, { x, xNum: xn, yFmt: (v) => v.toFixed(3), series: [
+    lineChart(h, { x, xNum: xn, vlines: VL, yFmt: (v) => v.toFixed(3), series: [
       { name: "All fees", values: ps("total_fee_per_block_ps"), color: "--neutral", w: 2.4, nodots: true },
       { name: "Initiated by automated (95% interval)", values: ps("auto_fee_per_block_ps"), lo: ps("auto_fee_per_block_ps_lo"), hi: ps("auto_fee_per_block_ps_hi"), color: "--auto", w: 2.6, nodots: true },
     ]});
@@ -482,7 +509,66 @@ $("take-work").innerHTML = RC.automated && RC.automated.length ? `What do softwa
   }
 }
 
-/* 07 trust */
+/* 07 value: does usage pay for issuance? */
+{
+  const SU = R.supply || {}, SW = SU.windows, VAL = SU.value, SR = SU.monthly || [];
+  if (SR.length && SW) {
+    const sx = SR.map(r => r.period), sn = sx.map(mn), st = SU.issuance_step;
+    const stTxt = st ? ` Measured from the block headers' own supply, net issuance fell from <b>${st.before.toFixed(2)}</b> to <b>${st.after.toFixed(2)} NEAR/s</b> (${st.before_pct_per_year.toFixed(1)}% to ${st.after_pct_per_year.toFixed(1)}% of supply per year) between ${st.from} and ${st.to}; the cause is not determined here.` : "";
+    $("take-val").innerHTML = (R.value_line ? esc(R.value_line) : "") + stTxt;
+    const vl = (R.regimes || []).filter(g => g.kind === "issuance" || g.kind === "v87").map(g => ({ at: g.at, label: g.label }));
+    let h = card("c-iss", "Net issuance, NEAR per second", "Slope of the headers' total supply against block time, month by month, with its 95% interval.",
+      "Within a month, total supply grows almost exactly linearly with block time (R² about 0.9999 in the months checked), so the slope of an OLS fit over the sampled blocks is the net issuance rate (<code>census/supply.py</code>). Net issuance is minted tokens minus burned tokens. Interval = bootstrap over blocks.");
+    lineChart(h, { x: sx, xNum: sn, vlines: vl, yFmt: (v) => v.toFixed(2), series: [
+      { name: "Net issuance (95% interval)", values: SR.map(r => r.net_issuance_ps), lo: SR.map(r => r.net_issuance_ps_ci[0]), hi: SR.map(r => r.net_issuance_ps_ci[1]), color: "--auto", w: 2.6, nodots: true }] });
+    const have = Object.fromEntries(((VAL && VAL.rows) || []).map(r => [r.period, r]));
+    h = card("c-cover", "Share of gross issuance covered by usage", "Estimated L1 fee burn, and Intents revenue as reported by DefiLlama.",
+      `Gross issuance = net issuance + burn. Burn = the header fee × 0.70 on protocol ≤ v86 and × 1.00 from v87 (NEAR gas docs: contracts received 30% of burnt gas up to v86). Intents revenue is DefiLlama's "NEAR's net captured revenue" (since 2026-02-23 used for open-market buybacks, not burned); the NEAR price is DefiLlama's. Both are third-party series from a committed snapshot${VAL ? " retrieved on " + VAL.snapshot_retrieved_on : ""}; only the issuance side is measured here. The Intents interval therefore reflects the issuance estimate only.`);
+    lineChart(h, { x: sx, xNum: sn, vlines: vl, yFmt: pct, series: [
+      { name: "L1 fee burn (95% interval)", values: SR.map(r => r.burn_cover), lo: SR.map(r => r.burn_cover_ci[0]), hi: SR.map(r => r.burn_cover_ci[1]), color: "--neutral", w: 2.4, nodots: true },
+      { name: "Intents revenue (DefiLlama)", values: sx.map(p => have[p] ? have[p].revenue_cover : null), color: "--auto", w: 2.8, nodots: true }] });
+    const vw = VAL && VAL.windows;
+    if (vw && vw.a && vw.b) {
+      const a = vw.a, b = vw.b, M$ = v => "$" + Math.round(v).toLocaleString();
+      $("c-val-tbl").innerHTML = `<h3>First Intents window vs latest window</h3><p class="sub">${a.periods[0]}–${a.periods[a.periods.length - 1]} compared with ${b.periods[0]}–${b.periods[b.periods.length - 1]}. USD at each month's average NEAR price.</p>
+        <div class="scroll" style="max-height:none"><table><thead><tr><th>Quantity</th><th class="n">First</th><th class="n">Latest</th><th class="n">Multiple</th></tr></thead><tbody>
+        <tr><td>NEAR price (average)</td><td class="n">$${a.near_price_usd.toFixed(2)}</td><td class="n">$${b.near_price_usd.toFixed(2)}</td><td class="n">×${(b.near_price_usd / a.near_price_usd).toFixed(2)}</td></tr>
+        <tr><td>Intents revenue per day (reported)</td><td class="n">${M$(a.intents_revenue_usd_day)}</td><td class="n">${M$(b.intents_revenue_usd_day)}</td><td class="n">×${(b.intents_revenue_usd_day / a.intents_revenue_usd_day).toFixed(1)}</td></tr>
+        <tr><td>Gross issuance per day, valued in USD</td><td class="n">${M$(a.issuance_usd_day)}</td><td class="n">${M$(b.issuance_usd_day)}</td><td class="n">×${(b.issuance_usd_day / a.issuance_usd_day).toFixed(2)}</td></tr>
+        <tr><td>L1 fees per day (block headers)</td><td class="n">${M$(a.l1_fees_usd_day)}</td><td class="n">${M$(b.l1_fees_usd_day)}</td><td class="n">×${(b.l1_fees_usd_day / a.l1_fees_usd_day).toFixed(2)}</td></tr>
+        <tr><td><b>Intents revenue ÷ issuance</b></td><td class="n">${pct(a.revenue_cover, 1)}</td><td class="n"><b>${pct(b.revenue_cover, 1)}</b></td><td class="n">×${(b.revenue_cover / a.revenue_cover).toFixed(1)}</td></tr>
+        <tr><td>Intents revenue ÷ L1 fees</td><td class="n">×${a.revenue_vs_l1_fees.toFixed(1)}</td><td class="n">×${b.revenue_vs_l1_fees.toFixed(1)}</td><td class="n"></td></tr>
+        <tr><td>Revenue + estimated burn ÷ issuance</td><td class="n">${pct(a.combined_cover, 1)}</td><td class="n">${pct(b.combined_cover, 1)}</td><td class="n"></td></tr></tbody></table></div>
+        <details><summary>Where the Intents figures come from</summary><p>Third-party data, used as published (snapshot ${esc(VAL.snapshot_retrieved_on)}, last full day ${esc(VAL.last_full_day)}). DefiLlama's methodology:</p>
+        <p><b>Revenue.</b> ${esc((VAL.methodology || {}).Revenue || "")}</p><p><b>Since 2026-02-23.</b> ${esc((VAL.methodology || {}).HoldersRevenue || "")}</p></details>`;
+      /* what would it take? */
+      const G0 = SW.b.gross_issuance_ps, B0 = SW.b.burn_ps, R0 = b.intents_revenue_usd_day, P0 = b.near_price_usd;
+      const W = $("c-whatif");
+      W.innerHTML = `<h3>What would it take for usage to pay for issuance?</h3><p class="sub">Start from the measured latest window and move the sliders. Revenue is treated as set in USD by swap activity, so a higher NEAR price makes issuance more expensive in USD.</p>
+        <div class="calc"><div>
+          <label>NEAR price <b id="o-p"></b><input id="s-p" type="range" min="0.5" max="30" step="0.1" value="${P0.toFixed(1)}"></label>
+          <label>Intents revenue vs measured <b id="o-r"></b><input id="s-r" type="range" min="0.25" max="30" step="0.25" value="1"></label>
+          <label>Issuance vs measured <b id="o-i"></b><input id="s-i" type="range" min="0.1" max="2" step="0.05" value="1"></label>
+          <label>L1 fee burn vs measured <b id="o-b"></b><input id="s-b" type="range" min="1" max="100" step="1" value="1"></label>
+          <button class="btn" id="calc-reset" type="button">Reset to measured</button>
+        </div><div><div class="muted" style="font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase">Share of issuance covered (Intents revenue + L1 burn)</div>
+          <div class="bigpct" id="o-cov"></div><div class="gauge"><i id="g-i"></i><u></u></div><div class="muted" style="font-size:13px">bar ends at 100% = issuance fully paid for</div>
+          <div id="o-be" style="margin-top:12px;font-size:15px;color:var(--ink-2)"></div></div></div>`;
+      const g = id => $(id), upd = () => {
+        const price = +g("s-p").value, mr = +g("s-r").value, mi = +g("s-i").value, mb = +g("s-b").value;
+        const revCov = (R0 * mr) / (G0 * mi * 86400 * price), burnCov = (B0 * mb) / (G0 * mi), cov = revCov + burnCov;
+        g("o-p").textContent = "$" + price.toFixed(2); g("o-r").textContent = "×" + mr.toFixed(2); g("o-i").textContent = "×" + mi.toFixed(2); g("o-b").textContent = "×" + mb;
+        g("o-cov").textContent = pct(cov, cov < 0.1 ? 1 : 0); g("g-i").style.width = Math.min(100, cov * 100) + "%";
+        g("o-be").innerHTML = cov >= 1 ? "<b>Issuance is fully covered</b> with these settings." : `With the other settings as shown, Intents revenue would need to be about <b>×${(mr * (1 - burnCov) / revCov).toFixed(1)}</b> the measured level to cover issuance.`;
+      };
+      ["s-p", "s-r", "s-i", "s-b"].forEach(id => g(id).addEventListener("input", upd));
+      g("calc-reset").onclick = () => { g("s-p").value = P0.toFixed(1); g("s-r").value = 1; g("s-i").value = 1; g("s-b").value = 1; upd(); };
+      upd();
+    } else { ["c-val-tbl", "c-whatif"].forEach(id => $(id).remove()); }
+  } else { $("take-val").textContent = "Supply data is not available in this build."; ["c-iss", "c-cover", "c-val-tbl", "c-whatif"].forEach(id => $(id).remove()); }
+}
+
+/* 08 trust */
 $("take-trust").innerHTML = T.n_classified ? `On a held-out test split the classifier finds <b>${pct(T.recall_automated)}</b> of labelled automated accounts and keeps <b>${pct(T.recall_human)}</b> of labelled humans human, abstaining on ${pct(1 - (T.coverage ?? 0))} for lack of history. Labels come from evidence the classifier never sees, and they are biased toward self-declared bots and engaged humans, so read this as an <b>optimistic ceiling</b>.` : "Validation labels are not available in this build.";
 if (T.n_classified) {
   const h = card("c-valid", "Held-out accuracy", `Test split: ${T.n_labelled} labelled accounts, ${T.n_classified} classified. Whiskers show Wilson 95% intervals.`,
@@ -501,7 +587,81 @@ if (T.n_classified) {
   barChart(h2, rows, { fmt: v => pts(v), min: -e, max: e, labelW: 330, rowH: 30 });
 } else { $("c-valid").remove(); $("c-abl").remove(); }
 
-/* 08 verify */
+/* live checker: the same rules as census/classify.py, run in the browser on the account's latest 200 signed transactions */
+const NOK = v => v != null && !Number.isNaN(v);
+const ge = (k, v) => f => NOK(f[k]) && f[k] >= v, lt = (k, v) => f => NOK(f[k]) && f[k] < v, btw = (k, lo, hi) => f => NOK(f[k]) && lo <= f[k] && f[k] < hi;
+const RULE_TESTS = {
+  lifetime_volume_very_high: ge("txs_count_total", 20000), lifetime_volume_high: btw("txs_count_total", 2000, 20000),
+  sustained_rate_very_high: ge("rate_per_day", 500), sustained_rate_high: btw("rate_per_day", 100, 500),
+  machine_speed_gaps: ge("fast_share", 0.5), frequent_machine_speed_gaps: btw("fast_share", 0.2, 0.5),
+  on_a_schedule: ge("periodic_share", 0.5), partly_on_a_schedule: btw("periodic_share", 0.25, 0.5),
+  never_rests_around_the_clock: f => NOK(f.rest_per_day) && f.rest_per_day < 0.2 && NOK(f.hour_coverage) && f.hour_coverage >= 0.9,
+  function_call_key_shape: ge("fc_key_share", 0.8), high_failure_rate: ge("fail_rate", 0.3),
+  sleeps_every_day: ge("rest_per_day", 0.8), low_activity_rate: lt("rate_per_day", 5), daytime_only_hours: lt("hour_coverage", 0.6),
+};
+function histFeatures(rows, total) {          // rows: [{ts: "<ns string>", ok: bool, fc: bool, deleg: bool}]
+  const n = rows.length, f = { n_obs: n, txs_count_total: total != null ? total : n };
+  Object.assign(f, { span_days: NaN, rate_per_day: NaN, gap_median_s: NaN, gap_cv: NaN, periodic_share: NaN, fast_share: NaN, rest_per_day: NaN, hour_coverage: NaN, fail_rate: NaN, fc_share: NaN, delegated_share: NaN });
+  if (n < 2) { if (n === 1) f.fail_rate = rows[0].ok ? 0 : 1; return f; }
+  const ts = rows.map(r => Number(r.ts) / 1e9).sort((a, b) => a - b), gaps = [];
+  for (let i = 1; i < ts.length; i++) gaps.push(ts[i] - ts[i - 1]);
+  const span = ts[ts.length - 1] - ts[0], srt = [...gaps].sort((a, b) => a - b), m = srt.length;
+  const med = m % 2 ? srt[(m - 1) / 2] : (srt[m / 2 - 1] + srt[m / 2]) / 2, tol = Math.max(0.10 * med, 1.5);
+  const share = pred => gaps.filter(pred).length / m, hours = new Set(ts.map(t => Math.floor((t % 86400) / 3600)));
+  const mean = gaps.reduce((a, b) => a + b, 0) / m, sd = Math.sqrt(gaps.reduce((a, b) => a + (b - mean) * (b - mean), 0) / m);
+  Object.assign(f, {
+    span_days: span / 86400, rate_per_day: span > 0 ? n / (span / 86400) : NaN, gap_median_s: med, gap_cv: mean > 0 ? sd / mean : NaN,
+    periodic_share: med > 0 ? share(g => Math.abs(g - med) <= tol) : NaN, fast_share: share(g => g <= 5),
+    rest_per_day: span >= 2 * 86400 ? gaps.filter(g => g >= 5 * 3600).length / (span / 86400) : NaN, hour_coverage: span >= 2 * 86400 ? hours.size / 24 : NaN,
+    fail_rate: rows.filter(r => !r.ok).length / n, fc_share: rows.filter(r => r.fc).length / n, delegated_share: rows.filter(r => r.deleg).length / n });
+  return f;
+}
+function scoreFeatures(f) {
+  let total = 0; const fired = [];
+  for (const r of RULES) { const t = RULE_TESTS[r.name]; if (t && t(f)) { total += r.points; fired.push(r.name); } }
+  const score = Math.max(0, Math.min(100, total));
+  return { score, fired, klass: f.n_obs < (P.min_obs ?? 8) ? "low_activity" : score >= (P.threshold ?? 50) ? "automated" : "human" };
+}
+const classifyRows = (rows, total) => { const features = histFeatures(rows, total); return { features, ...scoreFeatures(features) }; };
+window.__census = { histFeatures, scoreFeatures, classifyRows, ruleNames: () => Object.keys(RULE_TESTS) };
+{
+  const s = $("c-live"), ACCT = /^(([a-z\d]+[-_])*[a-z\d]+\.)*([a-z\d]+[-_])*[a-z\d]+$/;
+  const LX = V.live_examples || {};
+  const ex = [[LX.automated, "automated, correct"], [LX.human, "human, correct"], [LX.miss, "known miss"]].filter(([a]) => a);
+  s.innerHTML = `<h3>Is this account software? Try any NEAR account, live</h3><p class="sub">Your browser fetches the account's latest 200 signed transactions from the public FastNEAR API and scores them with the same rules as the pipeline. No server of ours is involved.</p>
+    <div class="lookup"><input id="live-q" placeholder="e.g. ${esc((ex[0] || [])[0] || "account.near")}" autocomplete="off" aria-label="NEAR account id"><button class="btn primary" id="live-go" type="button">Check live</button></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:-4px 0 12px"><span class="muted" style="font-size:13px;align-self:center">Examples (picked from the labelled set, including one the classifier gets wrong):</span>${ex.map(([a, why]) => `<button class="ex" data-live="${esc(a)}" type="button" title="${esc(a)}">${esc(short(a, 24))} <span class="muted">· ${why}</span></button>`).join("")}</div><div id="live-out"></div>
+    <p class="muted" style="font-size:13px">Behaviour only, over the latest 200 signed transactions as of now (the pipeline uses month-end windows). This checker omits the call-shape rule, which needs full transactions. It is not an identity judgement: a high score means the account behaves like software.</p>`;
+  const out = $("live-out"), rule = Object.fromEntries(RULES.map(r => [r.name, r]));
+  async function check(raw) {
+    const acct = raw.trim().toLowerCase();
+    if (!ACCT.test(acct) || acct.length < 2 || acct.length > 64) { out.innerHTML = `<p class="muted">That is not a valid NEAR account id.</p>`; return; }
+    out.innerHTML = `<p class="muted">Fetching ${esc(acct)}…</p>`;
+    let res;
+    try {
+      const r = await fetch("https://tx.main.fastnear.com/v0/account", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ account_id: acct, is_real_signer: true, desc: true, limit: 200 }) });
+      if (r.status === 429) { out.innerHTML = `<p class="muted">The public API is rate-limiting right now. Wait a few seconds and try again.</p>`; return; }
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      res = await r.json();
+    } catch (e) { out.innerHTML = `<p class="muted">Could not reach the API from this page (${esc(e.message || "network error")}). Open the hosted dashboard, or run <code>python -m census</code> locally.</p>`; return; }
+    const rows = (res.account_txs || []).map(x => ({ ts: x.tx_block_timestamp, ok: (x.is_success ?? true) !== false && x.is_success !== null, fc: !!x.is_function_call, deleg: !!x.is_delegated_signer }));
+    const c = classifyRows(rows, res.txs_count), f = c.features, kc = c.klass === "automated" ? "auto" : c.klass === "human" ? "hum" : "info";
+    const nf = (v, d = 2) => NOK(v) ? v.toFixed(d) : "needs ≥ 2 days";
+    out.innerHTML = `<div style="display:flex;gap:10px;align-items:center;margin:4px 0 12px;flex-wrap:wrap"><b style="font-size:18px">${esc(acct)}</b><span class="chip ${kc}">${c.klass.replace("_", " ").toUpperCase()} · score ${c.score}/100</span>
+      <a href="https://nearblocks.io/address/${encodeURIComponent(acct)}" target="_blank" rel="noopener" style="font-size:13px">Open on NearBlocks ↗</a></div>
+      ${c.klass === "low_activity" ? `<p class="muted">Only ${f.n_obs} signed transactions were observed (fewer than ${P.min_obs}), so the account is left unclassified rather than guessed.</p>` : ""}
+      <div class="grid2"><div><dl class="verdict"><dt>Observed signed txs</dt><dd>${f.n_obs}</dd><dt>Lifetime signed txs</dt><dd>${(f.txs_count_total ?? 0).toLocaleString()}</dd>
+        <dt>Rate (txs/day in window)</dt><dd>${nf(f.rate_per_day, 1)}</dd><dt>Gaps ≤ 5 s</dt><dd>${NOK(f.fast_share) ? pct(f.fast_share) : "n/a"}</dd><dt>Gaps on schedule (±10%)</dt><dd>${NOK(f.periodic_share) ? pct(f.periodic_share) : "n/a"}</dd>
+        <dt>Rest (≥5 h silences per day)</dt><dd>${nf(f.rest_per_day)}</dd><dt>Hours of day active</dt><dd>${NOK(f.hour_coverage) ? pct(f.hour_coverage) : "needs ≥ 2 days"}</dd><dt>Failure rate</dt><dd>${NOK(f.fail_rate) ? pct(f.fail_rate) : "n/a"}</dd></dl></div>
+      <div><div class="muted" style="font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin-bottom:4px">Rules that fired</div>
+      ${c.fired.length ? c.fired.map(n => { const r = rule[n] || { points: 0, why: n }; return `<div class="rule"><span>${esc(r.why)}</span><span class="p ${r.points >= 0 ? "pos" : "neg"}">${r.points >= 0 ? "+" : ""}${r.points}</span></div>`; }).join("") : `<p class="muted">No rule fired.</p>`}</div></div>`;
+  }
+  $("live-go").onclick = () => check($("live-q").value);
+  $("live-q").addEventListener("keydown", e => { if (e.key === "Enter") check(e.target.value); });
+  s.addEventListener("click", e => { const b = e.target.closest("[data-live]"); if (b) { $("live-q").value = b.dataset.live; check(b.dataset.live); } });
+}
+
+/* 09 verify */
 {
   const accts = R.accounts || {};
   const names = Object.keys(accts);

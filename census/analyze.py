@@ -267,6 +267,18 @@ def run() -> None:
         "accounts": I.accounts(txs, acc, recent),
         "spot_check": I.spot_check(txs, acc, recent[-3:]),
     }
+    from . import supply as S
+    res["supply"] = S.run_analysis(blocks, res["windows"])
+    act_ci = lambda r: (r["total_tx_per_block_ps_lo"], r["total_tx_per_block_ps_hi"])
+    act = S.largest_step(rows, "total_tx_per_block_ps", act_ci, direction=-1)
+    rise = S.largest_step(rows, "total_tx_per_block_ps", act_ci, direction=+1)
+    iss = res["supply"].get("issuance_step")
+    v87 = res["supply"]["assumptions"].get("first_month_with_v87")
+    res["regimes"] = [x for x in (
+        rise and {"kind": "activity_rise", "at": rise["to"], "label": f"activity x{1 + rise['relative_change']:.2f}", **rise},
+        act and {"kind": "activity", "at": act["to"], "label": f"activity x{1 + act['relative_change']:.2f}", **act},
+        iss and {"kind": "issuance", "at": iss["to"], "label": f"issuance x{1 + iss['relative_change']:.2f}", **iss},
+        v87 and {"kind": "v87", "at": v87, "label": "protocol v87 first seen"}) if x]
     (C.DERIVED / "results.json").write_text(json.dumps(jsonable(res), indent=1))
     last = rows[-1]
     print(f"{len(rows)} months. latest {last['period']}: automated tx share "

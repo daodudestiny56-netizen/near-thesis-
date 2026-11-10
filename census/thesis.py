@@ -181,6 +181,8 @@ def evaluate(res: dict, val: dict) -> list[dict]:
             "evidence": f"{c['accounts_for_half_of_automated_txs']} of the {c['automated_accounts_in_sample']} automated accounts in the sample "
                         f"({c['periods'][0]}–{c['periods'][-1]}) produce half of all automated transactions.",
         })
+    from .thesis_value import value_claims
+    claims += value_claims(res)
     claims.sort(key=lambda c: int(c["id"][1:]))
     return claims
 
@@ -221,6 +223,9 @@ def would_change_my_mind(claims: list[dict], res: dict) -> list[str]:
                "A falling automated share, or a falling intents share, would be evidence **against** the adoption thesis and would be reported as such.")
     out.append("**The absolute-growth claims (C10-C12) flip** if the per-second ratio interval moves above 1 (software activity or its fee burn "
                "growing) or the Intents level keeps rising; they are decided from the same bootstrap as the share claims.")
+    out.append("**The value-capture claims (C14-C18) flip** if usage covers issuance: C16 needs reported Intents revenue to reach the issuance bill (about "
+               "the multiple stated in its evidence), or issuance to fall further. They rest on third-party Intents revenue and price series (DefiLlama), so a "
+               "restatement of those series would change C16-C18 without any change to the chain-side measurements.")
     out.append("**The classifier claim (C7) fails** if a labelled set built by someone else (for example a published registry of agent accounts) "
                "gives materially lower recall than the self-built labels. The label builder is `census/labels.py`; swapping in other labels is one CSV.")
     out.append("**The framing fails** if most automated activity turns out to be relayers and games rather than economic agents: "
@@ -247,6 +252,9 @@ def render(res: dict, val: dict, claims: list[dict]) -> str:
       "and behaviour alone cannot separate them (see [METHODOLOGY.md](METHODOLOGY.md)).\n")
     w("## Bottom line\n")
     w(bottom_line(claims, res) + "\n")
+    from .thesis_value import value_line
+    if value_line(res):
+        w(value_line(res) + "\n")
     w("## Verdicts\n")
     w("| # | Claim | Verdict | Evidence |")
     w("|---|---|---|---|")
@@ -284,6 +292,8 @@ def run() -> None:
     res["claims"] = claims
     res["thesis_changes_mind"] = would_change_my_mind(claims, res)
     res["bottom_line"] = bottom_line(claims, res)
+    from .thesis_value import value_line
+    res["value_line"] = value_line(res)
     (C.DERIVED / "results.json").write_text(json.dumps(jsonable(res), indent=1))
     (C.ROOT / "THESIS.md").write_text(render(res, val, claims), encoding="utf-8")
     print("wrote THESIS.md: " + ", ".join(f"{c['id']}={LABEL[c['verdict']]}" for c in claims))

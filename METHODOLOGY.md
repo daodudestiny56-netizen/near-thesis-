@@ -160,15 +160,54 @@ remains in the code for reference but is deliberately not displayed or used in a
 **Sensitivity to the lifetime-volume rules.** Two classifier rules use an account's lifetime transaction count, which grows with age by construction. The pipeline
 recomputes the trend with those rules removed (`tx_auto_nolife`) and reports both, so the size of the rise is not overstated.
 
-## 10. What would change the conclusion
+## 10. Supply, burn and value capture: does usage pay for issuance?
+
+**Measured from the sampled blocks** ([census/supply.py](census/supply.py)). Each block header carries `total_supply`, `tokens_burnt` and `protocol_version`.
+
+* **Net issuance** = slope of `total_supply` against block time, an OLS fit over the month's sampled blocks. Within a month supply grows almost exactly
+  linearly (R² about 0.9999 in the months checked), so the slope is well determined; the interval is a bootstrap over blocks.
+* **Burn** = header fee × 0.70 on blocks with `protocol_version` ≤ 86, × 1.00 from v87. NEAR's gas docs: up to v86 contracts received 30% of the gas they
+  burned (not removed from supply); from v87 all of it is burned. The 0.70 is applied to the whole header fee, which is an approximation (the 30% applies to
+  gas burned while contracts execute). Using the full fee instead would raise the burn estimate by at most 1/0.7; the conclusion that burn covers a small share of
+  issuance does not depend on it. The first sampled block with version ≥ 87 is in 2026-11, so almost the whole study period is on the old rule.
+* **Gross issuance** = net issuance + burn (tokens minted per second). **Coverage** = burn ÷ gross issuance.
+* No inflation rate is assumed: the halving of net issuance between 2025-10 and 2025-11 (4.9% to 2.4% of supply per year) is read off the headers.
+  Its cause is **not** determined here.
+
+**Third-party inputs, used as published** ([census/external.py](census/external.py), committed under `data/external/` with the retrieval date).
+Intents **revenue** and **fees** and the **NEAR price** come from DefiLlama. Per DefiLlama's methodology (stored verbatim in the snapshot): *Fees* are gross
+fees charged on NEAR Intents swaps; *Revenue* is NEAR's net captured revenue, measured as NEAR/wNEAR swept into its revenue wallets and, since 2026-02-23, used to
+buy back NEAR on the open market (**not burned**). This repository does not verify those figures; it uses them exactly as published, drops the newest (partial)
+day, and drops the first (partial) month of Intents data.
+
+* Coverage in USD = revenue per day ÷ (gross issuance per second × 86,400 × the month's average NEAR price).
+* The interval on that coverage reflects the **issuance estimate only**; revenue and price are taken as given.
+* A rise in coverage is **decomposed** into revenue growth and a smaller USD issuance bill, because issuance halved inside the Intents window; one number would hide that.
+* The calculator on the dashboard treats revenue as set in USD by swap activity, so a higher NEAR price makes issuance more expensive in USD. That is an
+  assumption of the calculator, not a finding.
+
+## 11. Breakpoints and the in-browser checker
+
+**Breakpoints are detected, not asserted.** The month-to-month change with the largest |log ratio| between two *consecutive* sampled months is found for total
+activity (separately for the largest rise and the largest fall) and for net issuance. The sparse 2022-2023 baseline months are never compared with each other. The
+pair is chosen from the data, so "the intervals are disjoint" describes the step; it is not an independent test of it. Protocol v87 is marked at the first sampled
+month containing a block with version ≥ 87.
+
+**The live checker** (dashboard, "Verify it yourself") is a JavaScript port of `census/features.py` and `census/classify.py`. It scores an account from its latest 200
+signed transactions as of now, omits the call-shape rule (which needs full transactions), and is **tested to match the Python output exactly** (score, class, the
+rules that fired, and every numeric feature to 1e-9) on 30 real accounts: `tests/test_supply.py`, fixture `tests/fixtures/live_parity.json`. Its example chips include
+one account the pipeline gets wrong, labelled as a known miss.
+
+## 12. What would change the conclusion
 
 See [THESIS.md](THESIS.md), "What would change my mind".
 
-## 11. Reproducing
+## 13. Reproducing
 
 ```bash
-python -m census reproduce      # offline, from the committed sample: classify -> validate -> analyze -> dashboard
+python -m census reproduce      # offline, from the committed sample: classify -> validate -> analyze -> thesis -> report -> dashboard
 python -m census collect        # re-draw the sample from the live API (about 2-3 hours anonymous)
+python -m census external       # refresh the third-party snapshot (DefiLlama: Intents revenue, NEAR price); explicit, never part of reproduce
 python -m unittest discover -s tests
 ```
 

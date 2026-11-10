@@ -86,7 +86,8 @@ def collect_period(client: Client, label: str, start: datetime, end: datetime, l
         b = res["block"]
         blocks.append({"period": label, "height": h, "ts": int(b["block_timestamp"]) // 10**9,
                        "num_tx": b["num_transactions"], "tokens_burnt": int(b["tokens_burnt"]) / 1e24,
-                       "gas_burnt": int(b["gas_burnt"])})
+                       "gas_burnt": int(b["gas_burnt"]), "total_supply": int(b["total_supply"]) / 1e24,
+                       "protocol_version": b["protocol_version"]})
         for t in res.get("block_txs", []):
             txs.append({
                 "period": label, "height": h, "ts": int(t["tx_block_timestamp"]) // 10**9,

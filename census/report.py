@@ -95,6 +95,39 @@ def run() -> None:
         if res.get("bottom_line"):
             w_("\n**Bottom line.** " + res["bottom_line"].replace("**", "") + "\n")
 
+    sup = res.get("supply") or {}
+    if sup.get("windows"):
+        sw, vw = sup["windows"], (sup.get("value") or {}).get("windows") or {}
+        L.append("\n## Supply, burn and value capture\n")
+        st = sup.get("issuance_step")
+        if st:
+            L.append(f"**Net issuance step.** Measured from block-header supply, net issuance fell from {st['before']:.2f} NEAR/s ({st['before_pct_per_year']:.2f}% of supply per year) "
+                     f"in {st['from']} to {st['after']:.2f} NEAR/s ({st['after_pct_per_year']:.2f}% per year) in {st['to']} (intervals disjoint). The cause is not determined here.\n")
+        L.append("| Window | Net issuance | Estimated burn | Gross issuance | Burn / gross issuance |")
+        L.append("|---|---|---|---|---|")
+        for tag in ("a", "b"):
+            x = sw[tag]
+            L.append(f"| {x['periods'][0]} to {x['periods'][-1]} | {x['net_issuance_ps']:.3f} NEAR/s | {x['burn_ps']:.4f} NEAR/s | {x['gross_issuance_ps']:.3f} NEAR/s | "
+                     f"{pct(x['burn_cover'], 2)} ({pct(x['burn_cover_ci'][0], 2)}-{pct(x['burn_cover_ci'][1], 2)}) |")
+        L.append("\nBurn = block-header fee x 0.70 on protocol <= v86 (contracts received 30% of burnt gas) and x 1.00 from v87, per NEAR's gas docs. Gross issuance = net issuance + burn.\n")
+        if vw.get("a") and vw.get("b"):
+            L.append("**Intents revenue (third-party: DefiLlama snapshot, used as published) against issuance valued at the average NEAR price:**\n")
+            L.append("| Window | NEAR price | Intents revenue/day | Issuance/day | L1 fees/day | Revenue / issuance | Revenue / L1 fees |")
+            L.append("|---|---|---|---|---|---|---|")
+            for tag in ("a", "b"):
+                x = vw[tag]
+                L.append(f"| {x['periods'][0]} to {x['periods'][-1]} | ${x['near_price_usd']:.2f} | ${x['intents_revenue_usd_day']:,.0f} | ${x['issuance_usd_day']:,.0f} | "
+                         f"${x['l1_fees_usd_day']:,.0f} | {pct(x['revenue_cover'], 1)} | x{x['revenue_vs_l1_fees']:.1f} |")
+            L.append(f"\nSnapshot retrieved {(sup['value'] or {}).get('snapshot_retrieved_on')}. Per DefiLlama, Intents revenue is NEAR's net captured revenue and, since 2026-02-23, is used for open-market buybacks, not burned.\n")
+    regimes = res.get("regimes") or []
+    if regimes:
+        L.append("## Breakpoints detected from the data\n")
+        L.append("| Kind | Month | Change |")
+        L.append("|---|---|---|")
+        for g in regimes:
+            L.append(f"| {g['kind']} | {g['at']} | {g['label']} |")
+        L.append("")
+
     c = res.get("concentration") or {}
     if c:
         w(f"\n## Concentration\n\n{c['accounts_for_half_of_automated_txs']} of {c['automated_accounts_in_sample']} automated accounts "
@@ -158,6 +191,14 @@ def write_readme_block(res: dict, val: dict) -> None:
                  f"automated went {a_['per_s_a']:.1f} to {a_['per_s_b']:.1f} tx/s (x{a_['ratio_per_s']:.2f}, 95% CI x{a_['ratio_per_s_lo']:.2f} to x{a_['ratio_per_s_hi']:.2f})"
                  + (f"; fee burn initiated by automated accounts went {f_['per_s_a']:.4f} to {f_['per_s_b']:.4f} NEAR/s." if f_ else ".")
                  + " **The share rose because other activity fell faster, not because software activity grew.**")
+    sup = res.get("supply") or {}
+    sw_, vw_ = sup.get("windows"), ((sup.get("value") or {}).get("windows")) or {}
+    if sw_ and sup.get("issuance_step"):
+        st_ = sup["issuance_step"]
+        L.append(f"* **Does usage pay for issuance?** Estimated L1 burn covered {pct(sw_['b']['burn_cover'], 2)} of gross issuance in {sw_['b']['periods'][0]} to {sw_['b']['periods'][-1]}. "
+                 + (f"Reported Intents revenue (DefiLlama) covered {pct(vw_['b']['revenue_cover'])}, up from {pct(vw_['a']['revenue_cover'])} (x{vw_['b']['intents_revenue_usd_day'] / vw_['a']['intents_revenue_usd_day']:.1f} revenue, "
+                    f"x{vw_['b']['issuance_usd_day'] / vw_['a']['issuance_usd_day']:.2f} issuance in USD). " if vw_.get("a") and vw_.get("b") else "")
+                 + f"Net issuance itself fell from {st_['before']:.2f} to {st_['after']:.2f} NEAR/s between {st_['from']} and {st_['to']}.")
     counts = {}
     for c in res.get("claims", []):
         counts[c["verdict"]] = counts.get(c["verdict"], 0) + 1

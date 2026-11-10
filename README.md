@@ -26,7 +26,8 @@ Built for the [NEAR HACKATHON](https://nearhackathon.com) · track: **Investment
 * **Fees.** Automated accounts initiated 73.7% of fees (CI 62.9% to 81.2%) and fee payers classified as automated paid 82.5% (CI 72.5% to 90.3%); 42.4% of transactions were relayed.
 * **Accuracy (held-out test split, n=141).** Recall for automated 85.0% (Wilson CI 64.0% to 94.8%), for human 99.2%, balanced accuracy 92.1%, ROC AUC 0.99. Labels are biased toward self-declared bots, so treat this as an optimistic ceiling.
 * **Absolute activity (per second, block-time corrected).** Total activity went 64.4 to 8.0 tx/s; automated went 14.9 to 4.9 tx/s (x0.33, 95% CI x0.26 to x0.42); fee burn initiated by automated accounts went 0.0102 to 0.0059 NEAR/s. **The share rose because other activity fell faster, not because software activity grew.**
-* **Thesis verdicts** (decided by code from the intervals, see [THESIS.md](THESIS.md)): 1 inconclusive, 3 descriptive, 2 not supported, 7 supported.
+* **Does usage pay for issuance?** Estimated L1 burn covered 0.58% of gross issuance in 2026-06 to 2026-11. Reported Intents revenue (DefiLlama) covered 15.1%, up from 1.1% (x9.3 revenue, x0.67 issuance in USD). Net issuance itself fell from 1.98 to 0.98 NEAR/s between 2025-10 and 2025-11.
+* **Thesis verdicts** (decided by code from the intervals, see [THESIS.md](THESIS.md)): 1 inconclusive, 4 descriptive, 4 not supported, 9 supported.
 
 <!-- RESULTS:END -->
 
@@ -74,8 +75,20 @@ For each calendar month the census draws **45 blocks uniformly at random** (seed
 4. estimates **shares of transactions and of fees** with a cluster bootstrap over blocks for the interval.
 
 Reported: monthly automated share (with upper bound), fees *initiated* vs *paid* by automated accounts,
-relayed share, share addressed to `intents.near`, concentration of automated activity, a trend
-absolute activity per second (so a rising share is not mistaken for rising activity), and a leave-one-rule-out ablation.
+relayed share, share addressed to `intents.near`, concentration of automated activity, **absolute activity per second**
+(so a rising share is not mistaken for rising activity), and a leave-one-rule-out ablation.
+
+It also answers the investor's question, **does usage pay for issuance?** Net issuance is measured from the block headers' own
+`total_supply`, burn from the headers' fees (with the pre-v87 contract-reward rule), and Intents revenue and the NEAR price come
+from a committed DefiLlama snapshot (third-party, used as published). Breakpoints (activity collapse, issuance halving, first
+protocol-v87 block) are **detected from the data**, not asserted.
+
+On the dashboard you can also:
+
+* **Check any NEAR account live.** Your browser fetches the account's latest 200 signed transactions and scores them with the
+  same 14 rules as the pipeline (tested to match the Python output on 30 real accounts).
+* **Move the sliders** in "What would it take for usage to pay for issuance?", starting from the measured values.
+* **Verify it yourself**: random sampled transactions link to an explorer, and every verdict lists the rules that fired.
 
 ## How NEAR fits in
 
@@ -106,10 +119,16 @@ census/                 the pipeline (stdlib + numpy + pandas)
   classify.py           stage 2: explainable rule-list classifier
   labels.py             builds validation labels from independent evidence
   validate.py           stage 3: held-out accuracy, ablation, bias adjustment
-  analyze.py            stage 4: shares, absolute levels, bootstrap intervals
-  report.py             writes RESULTS.md
+  analyze.py            stage 4: shares, absolute levels, bootstrap intervals, breakpoints
+  insights.py           hour-of-day rhythm, receivers, first-vs-latest window tests
+  supply.py             net issuance, burn, gross issuance and value capture (does usage pay for issuance?)
+  external.py           downloads the third-party snapshot (DefiLlama: Intents revenue, NEAR price) into data/external/
+  thesis.py             decides each thesis claim from the intervals and writes THESIS.md
+  thesis_value.py       the value-capture claims (C14-C18)
+  report.py             writes RESULTS.md and the README headline block
   dashboard.py          stage 5: writes docs/index.html (self-contained, offline)
 data/derived/           the committed sample and computed results
+data/external/          third-party snapshot (DefiLlama), with retrieval date and methodology text
 data/labels/            labelled accounts, evidence, and review notes
 docs/index.html         the dashboard (also deployable on GitHub Pages)
 tests/                  offline unit tests with synthetic accounts of known behaviour
@@ -120,10 +139,13 @@ tools/make_video.py     records the demo video from the dashboard (presentation 
 
 * **Built during the hackathon window.** The repository was created for this event; no code predates 1 Nov 2026.
 * **Libraries:** `numpy`, `pandas` (analysis); everything else is the Python standard library. The dashboard is
-  plain HTML/SVG/JavaScript with no dependencies and no network calls at view time. `tools/` additionally uses
+  plain HTML/SVG/JavaScript with no dependencies; it makes no network calls unless you use the live account checker, which sends one
+  request to the FastNEAR API from your browser. `tools/` additionally uses
   `playwright`, `imageio-ffmpeg` and `edge-tts` (Microsoft's online speech service, which receives the narration text) to record the
   narrated demo video; none of them is needed to run the project.
-* **Data source:** the public [FastNEAR Transactions API](https://docs.fastnear.com/tx) and NEAR Social (`social.near`) via public RPC.
+* **Data sources:** the public [FastNEAR Transactions API](https://docs.fastnear.com/tx) and NEAR Social (`social.near`) via public RPC (measured here);
+  and [DefiLlama](https://defillama.com) for NEAR Intents fees and revenue and the NEAR price (third-party, **not** measured here, committed as a dated
+  snapshot in `data/external/` with DefiLlama's own methodology text).
 * **AI assistance:** the code and documents were written with Claude Code (Anthropic). Validation label candidates were
   harvested by script and reviewed with Claude Code's help; the review log, including every removal and why, is in
   [`data/labels/review_notes.md`](data/labels/review_notes.md) and is open to audit. Submission decisions are the author's.

@@ -12,6 +12,8 @@ This is a hypothesis taken from the project brief, not a result. The census test
 
 **Software's share of NEAR activity rose, but software activity did not.** The share rose because the rest of the activity (classified human-like) fell faster than automated activity did. Total activity went 64.4 → 8.0 tx/s, automated 14.9 → 4.9 tx/s, human-like 42.8 → 2.9 tx/s; fee burn by automated accounts 0.0102 → 0.0059 NEAR/s. The relayed share of transactions went 36% → 42%. The data therefore supports "NEAR activity is increasingly dominated by software" and does **not** support "software activity on NEAR is growing".
 
+On the value side, usage does not yet pay for issuance: estimated L1 burn covered 0.58% of gross issuance, and reported Intents revenue covered 15.1% (up from 1.1%). Most of that rise is revenue growth (x9.3); the rest is a smaller issuance bill (x0.67 in USD).
+
 ## Verdicts
 
 | # | Claim | Verdict | Evidence |
@@ -29,6 +31,11 @@ This is a hypothesis taken from the project brief, not a result. The census test
 | C11 | Automated accounts generate more fee burn in absolute terms (NEAR per second). | **NOT SUPPORTED** | 0.0102 → 0.0059 NEAR/s (x0.57, 95% CI x0.42 to x0.83); fees initiated by automated accounts, from the per-transaction burnt amount. |
 | C12 | Traffic addressed to NEAR Intents is growing in absolute terms (transactions per second). | **SUPPORTED** | 0.00 → 0.79 tx/s (per-block change +0.48, 95% CI +0.37 to +0.60). A lower bound: only transactions addressed to intents.near are counted. |
 | C13 | Total network activity per second changed between the two windows. | **DESCRIPTIVE** | All transactions 64.4 → 8.0 tx/s (x0.12, CI x0.11 to x0.14); human-like 42.8 → 2.9 tx/s (x0.07); total fee burn 0.0425 → 0.0079 NEAR/s (x0.19, CI x0.16 to x0.22). |
+| C14 | L1 fee burn alone covers NEAR's issuance (usage pays for the tokens minted). | **NOT SUPPORTED** | Estimated burn covered 0.58% of gross issuance in 2026-06-2026-11 (95% CI 0.50% to 0.67%), against 1.64% in 2024-01-2024-06. Gross issuance = net supply growth + burn; burn is the header fee x 0.70 on protocol <= v86 and x 1.00 from v87 (NEAR gas docs). |
+| C15 | NEAR's net issuance (dilution) fell sharply during the study period. | **SUPPORTED** | Measured from block-header supply, net issuance fell from 1.98 NEAR/s (4.91% of supply per year) in 2025-10 to 0.98 NEAR/s (2.41% per year) in 2025-11, a 51% drop between consecutive sampled months with disjoint 95% intervals. The cause is not determined here. Window averages: 1.78 -> 1.02 NEAR/s. |
+| C16 | NEAR Intents revenue covers NEAR's issuance in USD terms. | **NOT SUPPORTED** | Over 2026-06-2026-11, reported Intents revenue of $39,879/day covered 15.1% of gross issuance valued at $263,558/day (95% CI of the cover 15.1% to 15.2%; the interval reflects the chain-side issuance estimate only, revenue and price are taken as published). At that price, revenue would have to grow about x6.6 to cover issuance. |
+| C17 | Intents value capture relative to issuance is rising. | **SUPPORTED** | Cover of issuance by Intents revenue: 1.1% (2025-06-2025-11) -> 15.1% (2026-06-2026-11), a x14.0 change. Decomposition: revenue x9.3 ($4,267 -> $39,879/day) and issuance valued in USD x0.67 ($394,486 -> $263,558/day), because issuance fell and the price moved. |
+| C18 | Intents revenue is now large relative to L1 fees. | **DESCRIPTIVE** | Reported Intents revenue was x0.6 L1 fees in 2025-06-2025-11 and x17.9 in 2026-06-2026-11 (L1 fees $7,735 -> $2,224/day, from block headers valued at the monthly average price). Combined with estimated L1 burn, revenue + burn covered 15.8% of issuance. |
 
 ## Evidence for
 
@@ -39,18 +46,23 @@ This is a hypothesis taken from the project brief, not a result. The census test
 * **C6.** The headline share is robust to where the 'automated' cut-off is placed (within 10 points between thresholds 40 and 60). Automated share at threshold 60 / 50 / 40: 57% / 61% / 63% (a 6-point spread). 
 * **C9.** The rise in the automated share is not an artefact of lifetime-volume rules, which grow with account age. With those rules removed, the automated share goes 15.2% → 32.7% (+17.5 pts, 95% CI +11.6 pts to +23.7 pts). The headline rise is +38.0 pts, so part of its size comes from those rules and the rest survives without them.
 * **C12.** Traffic addressed to NEAR Intents is growing in absolute terms (transactions per second). 0.00 → 0.79 tx/s (per-block change +0.48, 95% CI +0.37 to +0.60). A lower bound: only transactions addressed to intents.near are counted.
+* **C15.** NEAR's net issuance (dilution) fell sharply during the study period. Measured from block-header supply, net issuance fell from 1.98 NEAR/s (4.91% of supply per year) in 2025-10 to 0.98 NEAR/s (2.41% per year) in 2025-11, a 51% drop between consecutive sampled months with disjoint 95% intervals. The cause is not determined here. Window averages: 1.78 -> 1.02 NEAR/s.
+* **C17.** Intents value capture relative to issuance is rising. Cover of issuance by Intents revenue: 1.1% (2025-06-2025-11) -> 15.1% (2026-06-2026-11), a x14.0 change. Decomposition: revenue x9.3 ($4,267 -> $39,879/day) and issuance valued in USD x0.67 ($394,486 -> $263,558/day), because issuance fell and the price moved.
 
 ## Evidence against, and what the data cannot say
 
 * **C7 (inconclusive).** The classifier separates labelled software from labelled people on held-out accounts. Test split (n=141 classified of 143 labelled): recall for automated 85% (Wilson CI 64%–95%), for human 99% (CI 95%–100%), balanced accuracy 92%. The labels are biased toward self-declared bots and engaged humans, so this is an optimistic ceiling.
 * **C10 (not supported).** Software-driven activity is growing in absolute terms (automated transactions per second). 2024-01-2024-06 → 2026-06-2026-11: 14.9 → 4.9 automated tx/s (x0.33, 95% CI x0.26 to x0.42); per block 18.2 → 3.0. Block time fell from 1.22 s to 0.61 s, which the per-second figure corrects for.
 * **C11 (not supported).** Automated accounts generate more fee burn in absolute terms (NEAR per second). 0.0102 → 0.0059 NEAR/s (x0.57, 95% CI x0.42 to x0.83); fees initiated by automated accounts, from the per-transaction burnt amount.
+* **C14 (not supported).** L1 fee burn alone covers NEAR's issuance (usage pays for the tokens minted). Estimated burn covered 0.58% of gross issuance in 2026-06-2026-11 (95% CI 0.50% to 0.67%), against 1.64% in 2024-01-2024-06. Gross issuance = net supply growth + burn; burn is the header fee x 0.70 on protocol <= v86 and x 1.00 from v87 (NEAR gas docs).
+* **C16 (not supported).** NEAR Intents revenue covers NEAR's issuance in USD terms. Over 2026-06-2026-11, reported Intents revenue of $39,879/day covered 15.1% of gross issuance valued at $263,558/day (95% CI of the cover 15.1% to 15.2%; the interval reflects the chain-side issuance estimate only, revenue and price are taken as published). At that price, revenue would have to grow about x6.6 to cover issuance.
 
 ### Descriptive findings (no verdict)
 
 * **C5.** The account that pays a fee is often not the account that initiated the transaction (relayers, NEP-366). Over 2026-06 to 2026-11, automated accounts initiated 74% of fees (CI 63%-81%) while on-chain fee payers classified as automated paid 83% (CI 73%-90%); the two intervals overlap. 42% of transactions were relayed.
 * **C8.** Automated activity is concentrated in a small number of accounts. 5 of the 94 automated accounts in the sample (2026-06–2026-11) produce half of all automated transactions.
 * **C13.** Total network activity per second changed between the two windows. All transactions 64.4 → 8.0 tx/s (x0.12, CI x0.11 to x0.14); human-like 42.8 → 2.9 tx/s (x0.07); total fee burn 0.0425 → 0.0079 NEAR/s (x0.19, CI x0.16 to x0.22).
+* **C18.** Intents revenue is now large relative to L1 fees. Reported Intents revenue was x0.6 L1 fees in 2025-06-2025-11 and x17.9 in 2026-06-2026-11 (L1 fees $7,735 -> $2,224/day, from block headers valued at the monthly average price). Combined with estimated L1 burn, revenue + burn covered 15.8% of issuance.
 
 ### Limits no amount of data fixes
 
@@ -65,8 +77,9 @@ This is a hypothesis taken from the project brief, not a result. The census test
 1. **C1 flips** if a larger or later sample puts the whole 95% interval on one side of 50%: it is currently 57%–65%, so it is **supported** today. More blocks per month narrows it; the code exposes `BLOCKS_PER_PERIOD`.
 2. **The trend claims (C2–C4) flip** if the first-vs-latest difference interval moves to one side of zero. A falling automated share, or a falling intents share, would be evidence **against** the adoption thesis and would be reported as such.
 3. **The absolute-growth claims (C10-C12) flip** if the per-second ratio interval moves above 1 (software activity or its fee burn growing) or the Intents level keeps rising; they are decided from the same bootstrap as the share claims.
-4. **The classifier claim (C7) fails** if a labelled set built by someone else (for example a published registry of agent accounts) gives materially lower recall than the self-built labels. The label builder is `census/labels.py`; swapping in other labels is one CSV.
-5. **The framing fails** if most automated activity turns out to be relayers and games rather than economic agents: the top-account table on the dashboard lets a reader judge that directly, and nothing in this method can rule it out.
+4. **The value-capture claims (C14-C18) flip** if usage covers issuance: C16 needs reported Intents revenue to reach the issuance bill (about the multiple stated in its evidence), or issuance to fall further. They rest on third-party Intents revenue and price series (DefiLlama), so a restatement of those series would change C16-C18 without any change to the chain-side measurements.
+5. **The classifier claim (C7) fails** if a labelled set built by someone else (for example a published registry of agent accounts) gives materially lower recall than the self-built labels. The label builder is `census/labels.py`; swapping in other labels is one CSV.
+6. **The framing fails** if most automated activity turns out to be relayers and games rather than economic agents: the top-account table on the dashboard lets a reader judge that directly, and nothing in this method can rule it out.
 
 ## Why this matters for an investor
 
