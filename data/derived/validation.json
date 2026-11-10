@@ -1,0 +1,176 @@
+{
+ "n_labels": 304,
+ "n_matched": 304,
+ "label_sources": {
+  "social_writer_with_profile": 269,
+  "declared_role_in_name": 35
+ },
+ "dev": {
+  "n_labelled": 161,
+  "n_classified": 153,
+  "coverage": 0.9503105590062112,
+  "tp": 11,
+  "fn": 4,
+  "tn": 137,
+  "fp": 1,
+  "recall_automated": 0.7333333333333333,
+  "recall_automated_ci": [
+   0.4804911034231324,
+   0.8910272389681718
+  ],
+  "recall_human": 0.9927536231884058,
+  "recall_human_ci": [
+   0.9600963092363003,
+   0.9987197221677447
+  ],
+  "precision_automated": 0.9166666666666666,
+  "precision_automated_ci": [
+   0.6461140782014047,
+   0.9851352905492264
+  ],
+  "balanced_accuracy": 0.8630434782608696,
+  "accuracy": 0.9673202614379085,
+  "accuracy_ci": [
+   0.9257857310783825,
+   0.9859621725390252
+  ]
+ },
+ "test": {
+  "n_labelled": 143,
+  "n_classified": 141,
+  "coverage": 0.986013986013986,
+  "tp": 17,
+  "fn": 3,
+  "tn": 120,
+  "fp": 1,
+  "recall_automated": 0.85,
+  "recall_automated_ci": [
+   0.6395767041130426,
+   0.9476322080405041
+  ],
+  "recall_human": 0.9917355371900827,
+  "recall_human_ci": [
+   0.9546682408538117,
+   0.9985396642034766
+  ],
+  "precision_automated": 0.9444444444444444,
+  "precision_automated_ci": [
+   0.7424220019799247,
+   0.9901250641690756
+  ],
+  "balanced_accuracy": 0.9208677685950413,
+  "accuracy": 0.9716312056737588,
+  "accuracy_ci": [
+   0.9293304990335695,
+   0.9889139832146244
+  ],
+  "auc": 0.993801652892562
+ },
+ "all": {
+  "n_labelled": 304,
+  "n_classified": 294,
+  "coverage": 0.9671052631578947,
+  "tp": 28,
+  "fn": 7,
+  "tn": 257,
+  "fp": 2,
+  "recall_automated": 0.8,
+  "recall_automated_ci": [
+   0.6410806339053748,
+   0.899576805540992
+  ],
+  "recall_human": 0.9922779922779923,
+  "recall_human_ci": [
+   0.9722862312682304,
+   0.9978798307250004
+  ],
+  "precision_automated": 0.9333333333333333,
+  "precision_automated_ci": [
+   0.7867618227892791,
+   0.9815233646723066
+  ],
+  "balanced_accuracy": 0.8961389961389962,
+  "accuracy": 0.9693877551020408,
+  "accuracy_ci": [
+   0.9428540912564614,
+   0.9838129693556223
+  ]
+ },
+ "ablation_test_balanced_accuracy": {
+  "all_rules": 0.9208677685950413,
+  "without:lifetime_volume_very_high": 0.75,
+  "without:lifetime_volume_high": 0.8958677685950414,
+  "without:sustained_rate_very_high": 0.7958677685950413,
+  "without:sustained_rate_high": 0.8958677685950414,
+  "without:machine_speed_gaps": 0.9208677685950413,
+  "without:frequent_machine_speed_gaps": 0.9208677685950413,
+  "without:on_a_schedule": 0.85,
+  "without:partly_on_a_schedule": 0.9208677685950413,
+  "without:never_rests_around_the_clock": 0.9,
+  "without:function_call_key_shape": 0.9208677685950413,
+  "without:high_failure_rate": 0.9208677685950413,
+  "without:sleeps_every_day": 0.9208677685950413,
+  "without:low_activity_rate": 0.9208677685950413,
+  "without:daytime_only_hours": 0.9208677685950413
+ },
+ "threshold_sweep_test": [
+  {
+   "threshold": 30,
+   "balanced_accuracy": 0.9708677685950413,
+   "recall_automated": 0.95,
+   "recall_human": 0.9917355371900827
+  },
+  {
+   "threshold": 35,
+   "balanced_accuracy": 0.9708677685950413,
+   "recall_automated": 0.95,
+   "recall_human": 0.9917355371900827
+  },
+  {
+   "threshold": 40,
+   "balanced_accuracy": 0.9708677685950413,
+   "recall_automated": 0.95,
+   "recall_human": 0.9917355371900827
+  },
+  {
+   "threshold": 45,
+   "balanced_accuracy": 0.9458677685950414,
+   "recall_automated": 0.9,
+   "recall_human": 0.9917355371900827
+  },
+  {
+   "threshold": 50,
+   "balanced_accuracy": 0.9208677685950413,
+   "recall_automated": 0.85,
+   "recall_human": 0.9917355371900827
+  },
+  {
+   "threshold": 55,
+   "balanced_accuracy": 0.8958677685950414,
+   "recall_automated": 0.8,
+   "recall_human": 0.9917355371900827
+  },
+  {
+   "threshold": 60,
+   "balanced_accuracy": 0.7958677685950413,
+   "recall_automated": 0.6,
+   "recall_human": 0.9917355371900827
+  },
+  {
+   "threshold": 65,
+   "balanced_accuracy": 0.7958677685950413,
+   "recall_automated": 0.6,
+   "recall_human": 0.9917355371900827
+  },
+  {
+   "threshold": 70,
+   "balanced_accuracy": 0.775,
+   "recall_automated": 0.55,
+   "recall_human": 1.0
+  }
+ ],
+ "rates_for_correction": {
+  "tpr": 0.85,
+  "fpr": 0.008264462809917328
+ }
+}

@@ -23,7 +23,7 @@ human candidates. The author can audit everything: `candidates.csv`, `labels.csv
 
 ## Counts
 
-* automated labels: **32**
+* automated labels: **35**
 * human labels: **269**
 
 ### Human candidates removed, by reason

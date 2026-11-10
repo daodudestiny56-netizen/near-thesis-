@@ -7,9 +7,10 @@ LABELS = ROOT / "data" / "labels"
 DOCS = ROOT / "docs"
 
 # --- sampling -------------------------------------------------------------------------------
-FIRST_PERIOD = "2021-01"          # first calendar month sampled
+FIRST_PERIOD = "2022-01"          # first calendar month sampled
 DENSE_FROM = "2024-01"            # every month from here on...
-SPARSE_STRIDE = 3                 # ...and one month per quarter (Jan/Apr/Jul/Oct) before it, as a long baseline
+BASELINE_MONTHS = ("2022-01", "2022-07", "2023-01", "2023-07")   # ...and four earlier months as a long baseline
+BASELINE_BLOCKS = 200             # early blocks hold few transactions, so baseline months draw more blocks
 BLOCKS_PER_PERIOD = 45            # uniformly random blocks drawn per calendar month
 SEED = 20261101                   # fixed so a re-run draws the identical blocks
 MAX_TX_PER_PERIOD = 160           # uniform random subsample of each month's sampled-block transactions (equal inclusion

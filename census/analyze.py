@@ -46,11 +46,45 @@ def _block_table(txs: pd.DataFrame, blocks: pd.DataFrame, mask: pd.Series | None
     return s.reindex(idx, fill_value=0.0).to_numpy()
 
 
+ABS_SPECS = {   # name -> (share spec, header column scaled)
+    "auto_tx_per_block": ("tx_auto", "num_tx"),
+    "human_tx_per_block": ("tx_human", "num_tx"),
+    "total_tx_per_block": (None, "num_tx"),
+    "intents_tx_per_block": ("to_intents", "num_tx"),
+    "auto_fee_per_block": ("fee_init_auto", "tokens_burnt"),
+    "total_fee_per_block": (None, "tokens_burnt"),
+}
 ROLL_NAMES = ("tx_auto", "fee_init_auto", "fee_paid_auto")
 
 
 def _month_no(p: str) -> int:
     return int(p[:4]) * 12 + int(p[5:]) - 1
+
+
+def sec_per_block(b: pd.DataFrame) -> float | None:
+    """Average block time in a month, from the sampled blocks' own heights and timestamps (it fell from ~1.3 s to ~0.6 s)."""
+    if len(b) < 2 or b["height"].max() == b["height"].min():
+        return None
+    return float((b["ts"].max() - b["ts"].min()) / (b["height"].max() - b["height"].min()))
+
+
+def _boot_scaled(num: np.ndarray, den: np.ndarray | None, scale: np.ndarray, rng: np.random.Generator):
+    """Absolute per-block level = (share over sampled txs) x (mean of a header quantity per block), bootstrapped over blocks.
+
+    num/den are the per-block numerator/denominator of a share (den=None means share 1); `scale` is a per-block header
+    quantity (transaction count, tokens burnt) that is observed for every sampled block, not just the capped sample.
+    """
+    nb = len(scale)
+    w = rng.multinomial(nb, np.full(nb, 1.0 / nb), size=C.BOOTSTRAP_RESAMPLES).astype(float)
+    sc = (w @ scale) / nb
+    if den is None:
+        draws, point = sc, float(scale.mean())
+    else:
+        d = w @ den
+        draws = np.where(d > 0, (w @ num) / np.where(d > 0, d, 1), np.nan) * sc
+        point = float(num.sum() / den.sum() * scale.mean())
+    lo, hi = np.nanpercentile(draws, [2.5, 97.5])
+    return point, float(lo), float(hi)
 
 
 def make_specs(txs: pd.DataFrame) -> dict:
@@ -64,6 +98,7 @@ def make_specs(txs: pd.DataFrame) -> dict:
         "tx_auto_of_classified": (txs["init_class"].eq(AUTO), None, txs["init_class"].isin([AUTO, HUMAN])),
         "tx_auto_t40": (judged & (txs["init_score"] >= 40), None, None),
         "tx_auto_t60": (judged & (txs["init_score"] >= 60), None, None),
+        "tx_auto_nolife": (judged & (txs["init_score_nolife"] >= C.AUTOMATED_THRESHOLD), None, None),
         "fee_init_auto": (txs["init_class"].eq(AUTO), "fee_near", None),
         "fee_init_auto_upper": (txs["init_class"].isin([AUTO, LOW]), "fee_near", None),
         "fee_paid_auto": (txs["payer_class"].eq(AUTO), "fee_near", None),
@@ -105,6 +140,16 @@ def monthly_series(txs: pd.DataFrame, blocks: pd.DataFrame, rates: dict | None =
             row[name], row[name + "_lo"], row[name + "_hi"] = point, lo, hi
             if name == "tx_auto":
                 headline_draws[p] = draws
+        # absolute levels per block (share x header totals): shows whether a share moved because the numerator or the denominator did
+        numtx, fee_h = b["num_tx"].to_numpy(float), b["tokens_burnt"].to_numpy(float)
+        row["sec_per_block"] = sec_per_block(b)
+        for name, (key, scale) in ABS_SPECS.items():
+            sc = numtx if scale == "num_tx" else fee_h
+            nd = per_block[p][key] if key else (None, None)
+            res_abs = _boot_scaled(nd[0], nd[1], sc, rng)
+            row[name], row[name + "_lo"], row[name + "_hi"] = res_abs
+            if row["sec_per_block"]:       # per second = per block / seconds per block (block time changed over the period)
+                row[name + "_ps"], row[name + "_ps_lo"], row[name + "_ps_hi"] = (v / row["sec_per_block"] for v in res_abs)
         if rates and "tx_auto_of_classified" in row:
             for k in ("", "_lo", "_hi"):
                 adj = rogan_gladen_share(row["tx_auto_of_classified" + k], rates)

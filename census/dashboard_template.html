@@ -72,6 +72,8 @@ h1 em { font-style: normal; color: var(--auto); }
 .tile .v { font-size: 38px; font-weight: 700; letter-spacing: -.03em; line-height: 1.1; margin: 6px 0 4px; font-variant-numeric: tabular-nums; }
 .tile .s { font-size: 14px; color: var(--ink-2); }
 .read { display: flex; gap: 14px; background: var(--warn-bg); border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent); border-radius: 14px; padding: 14px 18px; margin: 20px 0 8px; font-size: 15.5px; color: var(--ink); }
+.bl { background: var(--surface); border: 1px solid var(--ink); border-radius: 16px; padding: 18px 22px; margin: 20px 0 8px; font-size: 18px; line-height: 1.5; color: var(--ink); box-shadow: var(--shadow); }
+.bl b { font-weight: 700; }
 .read svg { flex: none; margin-top: 3px; color: var(--warn); width: 20px; height: 20px; }
 
 section { padding: 52px 0 6px; }
@@ -130,7 +132,7 @@ footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 28px 0 56
 <nav><div class="wrap">
   <a class="brand" href="#top"><i></i>NEAR Agent Census</a>
   <div class="links">
-    <a href="#how">Method</a><a href="#trend">Trend</a><a href="#fees">Fees</a><a href="#finger">Fingerprint</a><a href="#work">Software at work</a><a href="#trust">Trust</a><a href="#verify">Verify</a><a href="#thesis">Thesis</a>
+    <a href="#how">Method</a><a href="#trend">Share</a><a href="#absolute">Absolute</a><a href="#fees">Fees</a><a href="#finger">Fingerprint</a><a href="#work">Software at work</a><a href="#trust">Trust</a><a href="#verify">Verify</a><a href="#thesis">Thesis</a>
   </div>
   <button class="btn" id="theme" type="button" aria-label="Toggle dark mode">◐ Theme</button>
   <a class="btn primary" href="https://github.com/daodudestiny56-netizen/near-thesis-" target="_blank" rel="noopener">Code ↗</a>
@@ -147,6 +149,7 @@ footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 28px 0 56
   <div class="big" id="big"></div>
 </div>
 <div class="tiles" id="tiles"></div>
+<div class="bl" id="bottom"></div>
 <div class="read" id="caveat"></div>
 
 <section id="how">
@@ -182,10 +185,12 @@ footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 28px 0 56
   <div class="card" id="c-top" style="margin-top:14px"></div>
 </section>
 
-<section id="forecast">
-  <div class="sec-h"><span class="no">06</span><h2>Where the trend points</h2></div>
-  <p class="take" id="take-forecast"></p>
-  <div class="card" id="c-forecast"></div>
+<section id="absolute">
+  <div class="sec-h"><span class="no">06</span><h2>What actually changed: absolute activity</h2></div>
+  <p class="take" id="take-abs"></p>
+  <div class="card" id="c-abs-tx"></div>
+  <div class="card" id="c-abs-fee"></div>
+  <div class="card" id="c-abs-tbl"></div>
 </section>
 
 <section id="trust">
@@ -254,29 +259,36 @@ function card(id, title, sub, how) {
   return { chart: s.querySelector("[data-chart]"), tip: s.querySelector("[data-tip]"), legend: s.querySelector("[data-legend]"), table: s.querySelector("[data-table]") };
 }
 
-function lineChart(host, { x, series, yMax, yFmt = pct, height = 320, xLabels }) {
+function lineChart(host, { x, series, yMax, yFmt = pct, height = 320, xLabels, xNum }) {
   const W = 1000, H = height, m = { l: 52, r: 18, t: 12, b: 30 };
   const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": series.map(s => s.name).join(", ") });
   const iw = W - m.l - m.r, ih = H - m.t - m.b;
   const raw = Math.max(...series.flatMap(s => (s.hi || s.values).filter(v => v != null)), 0.01) * 1.05;
-  const nice = v => { for (const st of [.005, .01, .02, .05, .1, .2, .25, .5, 1]) if (v / st <= 5) return { max: Math.ceil(v / st) * st, n: Math.ceil(v / st) }; return { max: 1, n: 4 }; };
+  const nice = v => { const mag = Math.pow(10, Math.floor(Math.log10(v))); for (const mult of [0.1, 0.2, 0.25, 0.5, 1, 2, 2.5, 5, 10]) { const st = mag * mult; if (v / st <= 5) return { max: Math.ceil(v / st) * st, n: Math.ceil(v / st) }; } return { max: mag * 10, n: 5 }; };
   const sc = yMax ? { max: yMax, n: 5 } : nice(raw), ymax = sc.max;
-  const X = i => m.l + (x.length === 1 ? iw / 2 : i * iw / (x.length - 1)), Y = v => m.t + ih - (Math.min(v, ymax) / ymax) * ih;
+  const pos = xNum || x.map((_, i) => i), p0 = pos[0], p1 = pos[pos.length - 1];
+  const X = i => m.l + (x.length === 1 || p1 === p0 ? iw / 2 : (pos[i] - p0) / (p1 - p0) * iw), Y = v => m.t + ih - (Math.min(v, ymax) / ymax) * ih;
+  // contiguous runs: with a time-scaled axis a gap of more than one month breaks the line instead of joining distant points
+  const runs = []; { let cur = []; x.forEach((_, i) => { if (cur.length && xNum && pos[i] - pos[i - 1] > 1.5) { runs.push(cur); cur = []; } cur.push(i); }); runs.push(cur); }
   for (let t = 0; t <= sc.n; t++) {
     const v = ymax * t / sc.n;
     el("line", { x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v), class: "gridline" }, svg);
     const g = el("g", { class: "axis" }, svg); el("text", { x: m.l - 9, y: Y(v) + 4, "text-anchor": "end" }, g).textContent = yFmt(v, 0);
   }
-  const step = Math.max(1, Math.ceil(x.length / 10));
-  x.forEach((p, i) => { if (i % step === 0 || i === x.length - 1) { const g = el("g", { class: "axis" }, svg); el("text", { x: X(i), y: H - 8, "text-anchor": i === x.length - 1 ? "end" : i === 0 ? "start" : "middle" }, g).textContent = xLabels ? xLabels(p) : p; } });
+  const step = Math.max(1, Math.ceil(x.length / 10)); let lastLab = -1e9;
+  x.forEach((p, i) => {
+    const want = xNum ? (i === 0 || i === x.length - 1 || /-(01|07)$/.test(String(p))) && X(i) - lastLab > 78 && (i === x.length - 1 || X(x.length - 1) - X(i) > 70 || i === 0)
+                      : (i % step === 0 || i === x.length - 1);
+    if (want) { lastLab = X(i); const g = el("g", { class: "axis" }, svg); el("text", { x: X(i), y: H - 8, "text-anchor": i === x.length - 1 ? "end" : i === 0 ? "start" : "middle" }, g).textContent = xLabels ? xLabels(p) : p; }
+  });
   series.forEach(s => {
-    if (s.lo && s.hi) {
+    if (s.lo && s.hi) runs.forEach(run => {
       const pts = [];
-      x.forEach((_, i) => { if (s.hi[i] != null) pts.push([X(i), Y(s.hi[i])]); });
-      for (let i = x.length - 1; i >= 0; i--) if (s.lo[i] != null) pts.push([X(i), Y(s.lo[i])]);
-      el("polygon", { points: pts.map(p => p.join(",")).join(" "), fill: s.band || css("--band"), stroke: "none" }, svg);
-    }
-    let path = ""; s.values.forEach((v, i) => { if (v != null) path += (path ? "L" : "M") + X(i).toFixed(1) + " " + Y(v).toFixed(1); });
+      run.forEach(i => { if (s.hi[i] != null) pts.push([X(i), Y(s.hi[i])]); });
+      for (let k = run.length - 1; k >= 0; k--) if (s.lo[run[k]] != null) pts.push([X(run[k]), Y(s.lo[run[k]])]);
+      if (pts.length > 2) el("polygon", { points: pts.map(p => p.join(",")).join(" "), fill: s.band || css("--band"), stroke: "none" }, svg);
+    });
+    let path = ""; runs.forEach(run => { let started = false; run.forEach(i => { const v = s.values[i]; if (v != null) { path += (started ? "L" : "M") + X(i).toFixed(1) + " " + Y(v).toFixed(1); started = true; } }); });
     el("path", { d: path, fill: "none", stroke: css(s.color), "stroke-width": s.w || 2.4, "stroke-linejoin": "round", "stroke-linecap": "round", "stroke-dasharray": s.dash || "" }, svg);
     if (x.length <= 48 && !s.nodots) s.values.forEach((v, i) => { if (v != null) el("circle", { cx: X(i), cy: Y(v), r: 3.2, fill: css(s.color), stroke: css("--surface"), "stroke-width": 2 }, svg); });
   });
@@ -287,7 +299,8 @@ function lineChart(host, { x, series, yMax, yFmt = pct, height = 320, xLabels })
   const tip = host.tip;
   hit.addEventListener("pointermove", ev => {
     const r = svg.getBoundingClientRect(), px = (ev.clientX - r.left) / r.width * W;
-    const i = Math.max(0, Math.min(x.length - 1, Math.round((px - m.l) / iw * (x.length - 1))));
+    const target = p0 + (px - m.l) / iw * (p1 - p0);
+    let i = 0; for (let k = 1; k < x.length; k++) if (Math.abs(pos[k] - target) < Math.abs(pos[i] - target)) i = k;
     cross.setAttribute("x1", X(i)); cross.setAttribute("x2", X(i)); cross.setAttribute("visibility", "visible");
     tip.style.display = "block";
     tip.innerHTML = `<b>${xLabels ? xLabels(x[i]) : x[i]}</b>` + series.map(s => `<div><span style="color:var(--ink-2)">${s.name}</span><span>${s.values[i] == null ? "n/a" : yFmt(s.values[i], 1)}${s.lo && s.lo[i] != null ? ` <span style="color:var(--ink-3)">(${yFmt(s.lo[i], 0)}–${yFmt(s.hi[i], 0)})</span>` : ""}</span></div>`).join("");
@@ -322,7 +335,7 @@ function barChart(host, rows, { fmt = pct, min = 0, max = 1, labelW = 290, rowH 
     rows.map(r => `<tr><td>${esc(r.label)}</td><td class="n">${fmt(r.value)}</td><td class="n">${r.lo != null ? fmt(r.lo) + " to " + fmt(r.hi) : ""}</td></tr>`).join("") + `</tbody></table>`;
 }
 
-const x = M.map(r => r.period), col = k => M.map(r => r[k] ?? null);
+const x = M.map(r => r.period), col = k => M.map(r => r[k] ?? null), mn = p => +p.slice(0, 4) * 12 + +p.slice(5, 7), xn = x.map(mn);
 const chip = v => ({ supported: ["ok", "✓ SUPPORTED"], not_supported: ["bad", "✕ NOT SUPPORTED"], inconclusive: ["mid", "◐ INCONCLUSIVE"], info: ["info", "• DESCRIPTIVE"] }[v] || ["info", v]);
 
 /* hero */
@@ -337,9 +350,11 @@ $("big").innerHTML = lwA ? `<div class="k">Initiated by software · ${spanTxt}</
 $("tiles").innerHTML = [
   ["Fees initiated by software", pct(LW.fee_init_auto?.point), `CI ${pct(LW.fee_init_auto?.lo)}–${pct(LW.fee_init_auto?.hi)} · ${spanTxt}`],
   ["Fees paid by software accounts", pct(LW.fee_paid_auto?.point), `CI ${pct(LW.fee_paid_auto?.lo)}–${pct(LW.fee_paid_auto?.hi)} · relayers pay for users`],
-  ["Relayed (meta-)transactions", pct(LW.relayed?.point), `a relayer signed, a user initiated · ${spanTxt}`],
+  ["Total activity (tx/s)", WIN?.abs?.total_tx_per_block ? WIN.abs.total_tx_per_block.per_s_b.toFixed(1) : "n/a",
+    WIN?.abs?.total_tx_per_block ? `was ${WIN.abs.total_tx_per_block.per_s_a.toFixed(1)} in ${WIN.a[0]}–${WIN.a[WIN.a.length - 1]}` : ""],
   ["Classifier balanced accuracy", T.balanced_accuracy != null ? pct(T.balanced_accuracy) : "pending", T.n_classified ? `held-out test split · ${T.n_classified} labelled accounts` : "validation labels not built yet"],
 ].map(t => `<div class="tile"><div class="k">${t[0]}</div><div class="v">${t[1]}</div><div class="s">${t[2]}</div></div>`).join("");
+$("bottom").innerHTML = R.bottom_line ? `<b>Bottom line.</b> ` + esc(R.bottom_line).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>") : "";
 $("caveat").innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
   <div><b>Read this first.</b> "Software" means <i>behaves like software</i>: AI agents, trading and keeper bots, oracles and relayers all count, and behaviour cannot tell an LLM agent from a cron job. This is an upper-level proxy for agent activity, not a headcount of AI agents. The result is also sensitive to where the classifier's cut-off sits, so it is shown as a range.</div>`;
 
@@ -355,8 +370,8 @@ $("steps").innerHTML = [
 $("take-share").innerHTML = lwA ? `Over ${spanTxt}, <b>${pct(lwA.point)}</b> of sampled transactions were initiated by accounts that behave like software (95% interval ${pct(lwA.lo)}–${pct(lwA.hi)}). Move the cut-off and it ranges from <b>${pct(lwLo?.point)}</b> (strict) to <b>${pct(lwHi?.point)}</b> (lenient): the borderline accounts are a real share of the answer, so they are not hidden.` : "";
 {
   const h = card("c-share", "Automated share of transactions over time", "Monthly estimate with 95% interval, the 3-month pooled estimate, and the strict and lenient cut-offs.",
-    `Each month: ${P.blocks} random blocks; every transaction's real signer is classified from its own history; share = automated txs ÷ all txs over the sampled blocks; the interval is a cluster bootstrap over blocks (<code>census/analyze.py: monthly_series</code>). The 3-month line pools three months of blocks for a tighter estimate. Before 2024 only one month per quarter is sampled.`);
-  lineChart(h, { x, yMax: 1, series: [
+    `Each month: ${P.blocks} random blocks; every transaction's real signer is classified from its own history; share = automated txs ÷ all txs over the sampled blocks; the interval is a cluster bootstrap over blocks (<code>census/analyze.py: monthly_series</code>). The 3-month line pools three months of blocks for a tighter estimate. Before 2024 only four baseline months are sampled (2022-01, 2022-07, 2023-01, 2023-07), with more blocks each because early blocks hold few transactions.`);
+  lineChart(h, { x, xNum: xn, yMax: 1, series: [
     { name: "Monthly (95% interval)", values: col("tx_auto"), lo: col("tx_auto_lo"), hi: col("tx_auto_hi"), color: "--auto", w: 1.6 },
     { name: "3-month pooled", values: col("tx_auto_r3"), color: "--auto", w: 3.4, nodots: true },
     { name: "Strict cut-off (60)", values: col("tx_auto_t60"), color: "--neutral", dash: "5 5", w: 1.6, nodots: true },
@@ -367,7 +382,7 @@ $("take-share").innerHTML = lwA ? `Over ${spanTxt}, <b>${pct(lwA.point)}</b> of 
   const h = card("c-win", "Is it rising? First window vs latest window", WIN ? `Pooled ${WIN.a[0]}–${WIN.a[WIN.a.length - 1]} compared with ${WIN.b[0]}–${WIN.b[WIN.b.length - 1]}; bars are the difference with its 95% interval. An interval crossing zero means the data cannot tell.` : "Needs at least 12 densely sampled months.",
     "Difference of pooled ratios between the first and last six dense months, bootstrapped over blocks in each window (<code>census/insights.py: windows</code>). A bar whose interval excludes zero is a detectable change.");
   if (WIN) {
-    const nm = { tx_auto: "Automated share of transactions", fee_init_auto: "Automated share of fees (initiated)", fee_paid_auto: "Automated share of fees (paid)", relayed: "Relayed share", to_intents: "Share addressed to intents.near" };
+    const nm = { tx_auto: "Automated share of transactions", tx_auto_nolife: "…same, without lifetime-volume rules", fee_init_auto: "Automated share of fees (initiated)", fee_paid_auto: "Automated share of fees (paid)", relayed: "Relayed share", to_intents: "Share addressed to intents.near" };
     const rows = Object.entries(WIN.metrics).map(([k, v]) => ({ label: nm[k] || k, value: v.diff, lo: v.diff_lo, hi: v.diff_hi, color: v.diff_lo > 0 ? "--auto" : v.diff_hi < 0 ? "--human" : "--neutral" }));
     const ext = Math.max(0.05, ...rows.map(r => Math.max(Math.abs(r.lo), Math.abs(r.hi)))) * 1.15;
     barChart(h, rows, { fmt: v => pts(v), min: -ext, max: ext, labelW: 300 });
@@ -380,7 +395,7 @@ $("take-fees").innerHTML = (LW.fee_init_auto && LW.fee_paid_auto) ? `Over ${span
 {
   const h = card("c-fees", "Fees initiated vs fees paid by automated accounts", "Share of fees (tokens burnt) over time.",
     `Fee = the indexer's per-transaction <code>tokens_burnt</code> (in a 6-transaction cross-check about 88% of the full receipt-tree sum; shares are used for that reason). <i>Initiated</i> classifies the real signer; <i>paid</i> classifies the on-chain signer, i.e. the relayer for relayed transactions. Protocol v87 changed burning (contracts previously received 30% of burnt gas, now all of it is burned), so fee <i>levels</i> are not comparable across it.`);
-  lineChart(h, { x, yMax: 1, series: [
+  lineChart(h, { x, xNum: xn, yMax: 1, series: [
     { name: "Initiated by automated (95% interval)", values: col("fee_init_auto"), lo: col("fee_init_auto_lo"), hi: col("fee_init_auto_hi"), color: "--auto", w: 2 },
     { name: "Paid by automated accounts", values: col("fee_paid_auto"), color: "--paid", w: 2 },
   ]});
@@ -388,7 +403,7 @@ $("take-fees").innerHTML = (LW.fee_init_auto && LW.fee_paid_auto) ? `Over ${span
 {
   const h = card("c-shape", "Relayed transactions and NEAR Intents traffic", "Shares of all sampled transactions.",
     `Relayed = the indexer's <code>is_relayed</code> flag. Intents = transactions whose receiver is <code>intents.near</code>; a lower bound on intents involvement (deposits routed through token contracts are not counted).`);
-  lineChart(h, { x, series: [
+  lineChart(h, { x, xNum: xn, series: [
     { name: "Relayed share (95% interval)", values: col("relayed"), lo: col("relayed_lo"), hi: col("relayed_hi"), color: "--paid", band: "rgba(27,175,122,.14)", w: 2 },
     { name: "Addressed to intents.near", values: col("to_intents"), color: "--human", w: 2 },
   ]});
@@ -435,20 +450,37 @@ $("take-work").innerHTML = RC.automated && RC.automated.length ? `What do softwa
     `</tbody></table></div>`;
 }
 
-/* 06 forecast */
-if (F && F.horizon) {
-  const fx = x.concat(F.horizon), n = x.length;
-  const hist = col("tx_auto").concat(F.horizon.map(() => null));
-  const proj = fx.map((_, i) => i < n - 1 ? null : i === n - 1 ? last.tx_auto : F.share_p50[i - n]);
-  const lo = fx.map((_, i) => i < n ? null : F.share_lo[i - n]), hi = fx.map((_, i) => i < n ? null : F.share_hi[i - n]);
-  $("take-forecast").innerHTML = `Extrapolating a straight line through the logit of the last ${F.fit_months.length} months gives a median <b>${pct(F.share_p50.slice(-1)[0])}</b> by ${F.horizon.slice(-1)[0]} (95% band ${pct(F.share_lo.slice(-1)[0])}–${pct(F.share_hi.slice(-1)[0])}). The fitted slope is positive in ${pct(F.prob_slope_positive)} of bootstrap replicates. <b>This is not a prediction:</b> it shows how much a trend line is worth given this much sampling noise.`;
-  const h = card("c-forecast", "Trend extrapolation with sampling uncertainty", "Median and 95% band of the logit-linear fit, projected 12 months.",
-    "Each bootstrap replicate fits a line to logit(share) over the fit window and projects 12 months (<code>census/analyze.py: trend_forecast</code>). The band reflects sampling noise only; it excludes regime change, new protocols and changes in how software behaves.");
-  lineChart(h, { x: fx, yMax: 1, series: [
-    { name: "Measured (monthly)", values: hist, color: "--auto", w: 2.2 },
-    { name: "Extrapolation (median, 95% band)", values: proj, lo, hi, color: "--auto", dash: "6 5", w: 2.2 },
-  ]});
-} else { $("take-forecast").textContent = "Not enough months to fit a trend yet."; $("c-forecast").remove(); }
+/* 06 absolute */
+{
+  const AB = (WIN && WIN.abs) || null;
+  const ps = k => M.map(r => r[k] ?? null);
+  const rate = v => v >= 10 ? v.toFixed(0) : v.toFixed(1);
+  if (AB) {
+    $("take-abs").innerHTML = `A share is a ratio, so it rises when the denominator falls. ${R.bottom_line ? esc(R.bottom_line).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>") : ""} All rates below are per second, using each month's own measured block time (${AB._sec_per_block.a.toFixed(2)} s per block in ${WIN.a[0]}–${WIN.a[WIN.a.length - 1]}, ${AB._sec_per_block.b.toFixed(2)} s in ${WIN.b[0]}–${WIN.b[WIN.b.length - 1]}).`;
+    let h = card("c-abs-tx", "Transactions per second, by class", "Monthly estimate. Share × the block headers' own transaction counts, bootstrapped over blocks.",
+      "Absolute level = (share of sampled transactions in a class) × (mean transactions per block, from every sampled block's header) ÷ (seconds per block). Interval = bootstrap over blocks (<code>census/analyze.py: _boot_scaled</code>). Before 2024 only four baseline months are sampled and the line is broken between them.");
+    lineChart(h, { x, xNum: xn, yFmt: (v) => rate(v) + "/s", series: [
+      { name: "All transactions", values: ps("total_tx_per_block_ps"), color: "--neutral", w: 2.4, nodots: true },
+      { name: "Automated (95% interval)", values: ps("auto_tx_per_block_ps"), lo: ps("auto_tx_per_block_ps_lo"), hi: ps("auto_tx_per_block_ps_hi"), color: "--auto", w: 2.6, nodots: true },
+      { name: "Human-like", values: ps("human_tx_per_block_ps"), color: "--human", w: 2.4, nodots: true },
+    ]});
+    h = card("c-abs-fee", "Fee burn per second (NEAR)", "Total, and the part initiated by automated accounts.",
+      "Fee = the indexer's per-transaction tokens burnt. Total fee per block comes from every sampled block's header; the automated part multiplies it by the automated share of sampled fees. Levels are not comparable across protocol v87 (contracts received 30% of burnt gas before it, none after).");
+    lineChart(h, { x, xNum: xn, yFmt: (v) => v.toFixed(3), series: [
+      { name: "All fees", values: ps("total_fee_per_block_ps"), color: "--neutral", w: 2.4, nodots: true },
+      { name: "Initiated by automated (95% interval)", values: ps("auto_fee_per_block_ps"), lo: ps("auto_fee_per_block_ps_lo"), hi: ps("auto_fee_per_block_ps_hi"), color: "--auto", w: 2.6, nodots: true },
+    ]});
+    const nm = { total_tx_per_block: ["All transactions", "tx/s", 1], auto_tx_per_block: ["Automated transactions", "tx/s", 1], human_tx_per_block: ["Human-like transactions", "tx/s", 1],
+      intents_tx_per_block: ["Addressed to intents.near", "tx/s", 2], total_fee_per_block: ["All fee burn", "NEAR/s", 4], auto_fee_per_block: ["Fee burn initiated by automated", "NEAR/s", 4] };
+    $("c-abs-tbl").innerHTML = `<h3>First window vs latest window, per second</h3><p class="sub">${WIN.a[0]}–${WIN.a[WIN.a.length - 1]} compared with ${WIN.b[0]}–${WIN.b[WIN.b.length - 1]}. The multiple is latest ÷ first, with its 95% interval.</p>
+      <div class="scroll" style="max-height:none"><table><thead><tr><th>Quantity</th><th class="n">First window</th><th class="n">Latest window</th><th class="n">Multiple</th><th class="n">95% interval</th></tr></thead><tbody>` +
+      Object.entries(nm).filter(([k]) => AB[k]).map(([k, [label, unit, d]]) => { const v = AB[k]; return `<tr><td>${label}</td><td class="n">${v.per_s_a.toFixed(d)} ${unit}</td><td class="n">${v.per_s_b.toFixed(d)} ${unit}</td><td class="n">${v.ratio_per_s == null ? "n/a (first window ≈ 0)" : "×" + v.ratio_per_s.toFixed(2)}</td><td class="n">${v.ratio_per_s_lo == null ? "" : "×" + v.ratio_per_s_lo.toFixed(2) + " to ×" + v.ratio_per_s_hi.toFixed(2)}</td></tr>`; }).join("") +
+      `</tbody></table></div>`;
+  } else {
+    $("take-abs").textContent = "Needs at least 12 densely sampled months to compare two windows.";
+    ["c-abs-tx", "c-abs-fee", "c-abs-tbl"].forEach(id => $(id).remove());
+  }
+}
 
 /* 07 trust */
 $("take-trust").innerHTML = T.n_classified ? `On a held-out test split the classifier finds <b>${pct(T.recall_automated)}</b> of labelled automated accounts and keeps <b>${pct(T.recall_human)}</b> of labelled humans human, abstaining on ${pct(1 - (T.coverage ?? 0))} for lack of history. Labels come from evidence the classifier never sees, and they are biased toward self-declared bots and engaged humans, so read this as an <b>optimistic ceiling</b>.` : "Validation labels are not available in this build.";

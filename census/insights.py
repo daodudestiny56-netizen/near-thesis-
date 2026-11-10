@@ -16,10 +16,10 @@ import numpy as np
 import pandas as pd
 
 from . import config as C
-from .analyze import AUTO, HUMAN, LOW, _block_table, make_specs
+from .analyze import ABS_SPECS, AUTO, HUMAN, LOW, _block_table, make_specs, sec_per_block
 
 EXPLORER = "https://nearblocks.io/txns/"
-WINDOW_METRICS = ("tx_auto", "fee_init_auto", "fee_paid_auto", "relayed", "to_intents")
+WINDOW_METRICS = ("tx_auto", "tx_auto_nolife", "fee_init_auto", "fee_paid_auto", "relayed", "to_intents")
 LATEST_METRICS = WINDOW_METRICS + ("tx_auto_upper", "tx_auto_t40", "tx_auto_t60", "tx_low", "fee_init_auto_upper")
 
 
@@ -165,7 +165,47 @@ def windows(txs: pd.DataFrame, blocks: pd.DataFrame, periods: list[str], size: i
         out["metrics"][name] = {"a": float(pa), "b": float(pb), "diff": float(pb - pa), "diff_lo": float(lo), "diff_hi": float(hi),
                                 "a_ci": [float(v) for v in np.nanpercentile(draws["a"], [2.5, 97.5])],
                                 "b_ci": [float(v) for v in np.nanpercentile(draws["b"], [2.5, 97.5])]}
+    out["abs"] = _abs_windows(txs, blocks, a_p, b_p, specs, rng)
     return out
+
+
+def _abs_windows(txs, blocks, a_p, b_p, specs, rng) -> dict:
+    """First-vs-latest comparison of absolute per-block levels (transactions and fees), bootstrapped over blocks."""
+    res = {}
+    spb = {tag: float(np.median([v for v in (sec_per_block(blocks[blocks["period"] == p]) for p in ps) if v]))
+           for tag, ps in (("a", a_p), ("b", b_p))}
+    for name, (key, col) in ABS_SPECS.items():
+        pooled = {}
+        for tag, ps in (("a", a_p), ("b", b_p)):
+            scale = np.concatenate([blocks.loc[blocks["period"] == p, "num_tx" if col == "num_tx" else "tokens_burnt"].to_numpy(float) for p in ps])
+            num, den = _pool(txs, blocks, specs, key, ps) if key else (None, None)
+            pooled[tag] = (num, den, scale)
+        draws, points = {}, {}
+        for tag, (num, den, scale) in pooled.items():
+            nb = len(scale)
+            w = rng.multinomial(nb, np.full(nb, 1.0 / nb), size=C.BOOTSTRAP_RESAMPLES).astype(float)
+            sc = (w @ scale) / nb
+            if den is None:
+                draws[tag], points[tag] = sc, float(scale.mean())
+            else:
+                d = w @ den
+                draws[tag] = np.where(d > 0, (w @ num) / np.where(d > 0, d, 1), np.nan) * sc
+                points[tag] = float(num.sum() / den.sum() * scale.mean())
+        diff = draws["b"] - draws["a"]
+        lo, hi = np.nanpercentile(diff, [2.5, 97.5])
+        if points["a"] > 0:
+            ratio = draws["b"] / np.where(draws["a"] > 0, draws["a"], np.nan)
+            rlo, rhi = np.nanpercentile(ratio, [2.5, 97.5])
+        else:                                   # nothing in the first window (e.g. intents in 2024-H1): a ratio is undefined
+            rlo = rhi = float("nan")
+        k = spb["a"] / spb["b"] if spb["a"] and spb["b"] else None        # blocks are faster now, so per-second ratios are larger
+        res[name] = {"a": points["a"], "b": points["b"], "diff": points["b"] - points["a"], "diff_lo": float(lo), "diff_hi": float(hi),
+                     "ratio": points["b"] / points["a"] if points["a"] else None, "ratio_lo": float(rlo), "ratio_hi": float(rhi),
+                     "ratio_per_s": (points["b"] / points["a"] * k) if points["a"] and k else None,
+                     "ratio_per_s_lo": float(rlo) * k if k and rlo == rlo else None, "ratio_per_s_hi": float(rhi) * k if k and rhi == rhi else None,
+                     "per_s_a": points["a"] / spb["a"] if spb["a"] else None, "per_s_b": points["b"] / spb["b"] if spb["b"] else None}
+    res["_sec_per_block"] = spb
+    return res
 
 
 def accounts(txs: pd.DataFrame, acc: pd.DataFrame, periods: list[str], n_auto: int = 60, n_human: int = 40) -> dict:

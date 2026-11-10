@@ -5,7 +5,8 @@ import numpy as np
 import pandas as pd
 
 from census import config as C
-from census.collect import cap_txs
+from census.analyze import _boot_scaled, sec_per_block
+from census.collect import cap_txs, needed_profiles
 from census.insights import hourly
 from census.labels import human_exclusion, looks_automated
 from census.thesis import INCONCLUSIVE, NOT, SUPPORTED, _diff_verdict, evaluate
@@ -88,6 +89,41 @@ class InsightTests(unittest.TestCase):
         rng = np.random.default_rng(1)
         rows = [{"period": "p", "ts": int(h * 3600), "init_class": k} for k in ("human", "automated") for h in rng.integers(0, 24, 300)]
         self.assertEqual(hourly(pd.DataFrame(rows), ["p"])["rhythm_verdict"], "no_clear_difference")
+
+
+class ProfileAlignmentTests(unittest.TestCase):
+    def test_relayer_profiles_are_paired_with_their_own_month(self):
+        df = pd.DataFrame([
+            {"period": "2026-01", "real_signer": "u1", "payer": "u1"},
+            {"period": "2026-02", "real_signer": "u2", "payer": "u2"},
+            {"period": "2026-03", "real_signer": "u3", "payer": "relayer.near"},
+            {"period": "2026-04", "real_signer": "u4", "payer": "relayer.near"},
+        ])
+        need = needed_profiles(df)
+        self.assertEqual(need["top"], {("2026-03", "relayer.near"), ("2026-04", "relayer.near")})
+        self.assertEqual(len(need["real"]), 4)
+
+
+class AbsoluteLevelTests(unittest.TestCase):
+    def test_absolute_level_is_share_times_header_mean(self):
+        rng = np.random.default_rng(0)
+        num, den = np.full(45, 3.0), np.full(45, 10.0)           # 30% of sampled txs are automated
+        scale = np.full(45, 50.0)                                # header says 50 txs per block
+        point, lo, hi = _boot_scaled(num, den, scale, rng)
+        self.assertAlmostEqual(point, 15.0)                      # 0.3 x 50
+        self.assertLessEqual(lo, point)
+        self.assertGreaterEqual(hi, point)
+
+    def test_share_up_while_level_down_is_distinguishable(self):
+        rng = np.random.default_rng(1)
+        before = _boot_scaled(np.full(45, 2.0), np.full(45, 10.0), np.full(45, 80.0), rng)[0]   # 20% of 80/block = 16
+        after = _boot_scaled(np.full(45, 6.0), np.full(45, 10.0), np.full(45, 5.0), rng)[0]     # 60% of 5/block = 3
+        self.assertLess(after, before)                           # the share tripled but the level fell
+
+    def test_block_time_is_measured_from_heights_and_timestamps(self):
+        b = pd.DataFrame({"height": [1000, 2000, 3000], "ts": [0, 1220, 2440]})
+        self.assertAlmostEqual(sec_per_block(b), 1.22)
+        self.assertIsNone(sec_per_block(pd.DataFrame({"height": [5], "ts": [1]})))
 
 
 if __name__ == "__main__":

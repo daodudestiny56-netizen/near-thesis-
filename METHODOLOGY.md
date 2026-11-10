@@ -29,11 +29,11 @@ because its free tier (about 10k calls/month) cannot support a census.
 NEAR produces roughly 144,000 blocks a day, so a full crawl through a public API is not realistic. The
 census is a **random sample**, which also gives honest error bars.
 
-* **Periods.** Every calendar month from `DENSE_FROM` (2024-01) to today, plus one month per quarter
-  (January, April, July, October) from 2021 as a long baseline. Constants live in
+* **Periods.** Every calendar month from `DENSE_FROM` (2024-01) to today, plus four baseline months (2022-01, 2022-07, 2023-01,
+  2023-07). 2021 is excluded: its blocks hold about one transaction per 25 blocks, too few to measure. Constants live in
   [census/config.py](census/config.py).
-* **Blocks.** For each month, 45 block heights are drawn uniformly at random from that month's height range,
-  with a fixed seed, so a re-run draws the same blocks. Skipped heights are dropped.
+* **Blocks.** For each dense month, 45 block heights are drawn uniformly at random from that month's height range; baseline months
+  draw 200 (early blocks hold few transactions). The seed is fixed, so a re-run draws the same blocks. Skipped heights are dropped.
 * **Transactions.** Every transaction in a sampled block is in the sample. A transaction's chance of being
   sampled is the same as any other's in that month, so ratios of sums are unbiased estimators of
   network-wide ratios.
@@ -141,12 +141,24 @@ the likely cause), so fee **shares** are reported rather than absolute amounts, 
 all of it is burned ([gas docs](https://docs.near.org/protocol/transactions/gas)). Fee levels are not comparable
 across that boundary; shares of fees are less affected but not immune.
 
-## 9. Trend extrapolation
+## 9. Shares are not activity: absolute levels, and why there is no forecast
 
-The dashboard fits a line to the logit of the monthly automated share over the last 24 months and projects 12
-months ahead, once per bootstrap replicate, so the band reflects **sampling uncertainty only**. It excludes model
-risk and regime change and is not a prediction. It exists so a reader can see how much a trend line is worth
-given this much noise, which is usually less than the line suggests.
+A *share* is a ratio. It rises when the numerator rises **or when the denominator falls**, so a rising automated share is not by itself evidence
+that software activity is growing. The census therefore also reports **absolute levels**:
+
+* `automated transactions per second` = (automated share of sampled transactions) × (mean transactions per block, read from every sampled block's
+  header) ÷ (seconds per block). The header totals are observed for every sampled block, not only for the capped transaction sample.
+* `fee burn per second`, built the same way from the headers' `tokens_burnt`.
+* Block time is **measured**, not assumed: seconds per block = (latest − earliest sampled timestamp) ÷ (highest − lowest sampled height) within each month.
+  It fell from about 1.2 s (2024-H1) to about 0.6 s (latest months), so per-block comparisons would flatter the recent period; per-second figures correct for it.
+* Intervals are a bootstrap over blocks (the share and the header mean are resampled together).
+
+**No forecast is shown.** An earlier design extrapolated a logit-linear trend of the share. The monthly series contains a **step change** (total activity per
+block falls about five-fold between 2026-03 and 2026-04), and a straight line through a step would fabricate a smooth path. `analyze.trend_forecast`
+remains in the code for reference but is deliberately not displayed or used in any claim. A reader who wants a forecast should model the regimes, not the line.
+
+**Sensitivity to the lifetime-volume rules.** Two classifier rules use an account's lifetime transaction count, which grows with age by construction. The pipeline
+recomputes the trend with those rules removed (`tx_auto_nolife`) and reports both, so the size of the rise is not overstated.
 
 ## 10. What would change the conclusion
 

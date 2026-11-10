@@ -67,6 +67,7 @@ RULES: list[Rule] = [
     Rule("daytime_only_hours", -10, lambda f: _ok(f.get("hour_coverage")) and f["hour_coverage"] < 0.6, "active in < 60% of UTC hours"),
 ]
 RULE_NAMES = [r.name for r in RULES]
+LIFETIME_RULES = {"lifetime_volume_very_high", "lifetime_volume_high"}
 
 
 def score(f: dict, skip: set[str] | None = None) -> tuple[int, list[str]]:
@@ -96,6 +97,9 @@ def classify_frame(feats: pd.DataFrame, skip: set[str] | None = None) -> pd.Data
         fired.append("|".join(why))
     out = feats.copy()
     out["score"], out["klass"], out["fired"] = scores, classes, fired
+    # Sensitivity: the same score with the lifetime-volume rules removed. Lifetime counts grow with account age by
+    # construction, so this checks that a rising trend is not an artefact of them.
+    out["score_nolife"] = [score(rec, skip=LIFETIME_RULES)[0] for rec in feats.to_dict("records")]
     return out
 
 
@@ -121,8 +125,17 @@ def run() -> None:
     key = acc.set_index(["period", "account", "role"])["klass"]
     sc = acc.set_index(["period", "account", "role"])["score"]
     real = [(p, a, "real") for p, a in zip(txs["period"], txs["real_signer"])]
+    missing = [k for k in real if k not in key.index] if hasattr(key, "index") else []
+    paid_keys = [(p, a, "real" if a == r else "top") for p, a, r in zip(txs["period"], txs["payer"], txs["real_signer"])]
+    missing_paid = [k for k in paid_keys if k not in key.index]
+    if missing or missing_paid:
+        raise RuntimeError(f"{len(missing)} initiator and {len(missing_paid)} fee-payer profiles are missing from account_features; "
+                           "run `python -m census merge` (or `collect`) so every transaction's accounts are profiled. "
+                           "Refusing to default them to low_activity, which would silently bias the shares.")
     txs["init_class"] = [key.get(k, "low_activity") for k in real]
     txs["init_score"] = [sc.get(k, 0) for k in real]
+    sc_nl = acc.set_index(["period", "account", "role"])["score_nolife"]
+    txs["init_score_nolife"] = [sc_nl.get(k, 0) for k in real]
     paid = [(p, a, "real" if a == r else "top") for p, a, r in zip(txs["period"], txs["payer"], txs["real_signer"])]
     txs["payer_class"] = [key.get(k, "low_activity") for k in paid]
     out2 = C.DERIVED / "classified_txs.csv.gz"

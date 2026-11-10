@@ -70,6 +70,65 @@ def evaluate(res: dict, val: dict) -> list[dict]:
             claims.append({"id": cid, "verdict": INCONCLUSIVE, "statement": text,
                            "evidence": "Not testable yet: the first-vs-latest comparison needs at least 12 densely sampled months."})
 
+    # C2 caveat + C9 -- does the rise survive without the lifetime-volume rules?
+    nl = wm.get("tx_auto_nolife")
+    if nl:
+        for c in claims:
+            if c["id"] == "C2":
+                c["evidence"] += (f" Without the lifetime-volume rules (which grow with account age by construction) the same comparison is "
+                                  f"{pct(nl['a'], 1)} \u2192 {pct(nl['b'], 1)} ({pts(nl['diff'])}, 95% CI {pts(nl['diff_lo'])} to {pts(nl['diff_hi'])}).")
+        claims.append({
+            "id": "C9", "verdict": _diff_verdict(nl),
+            "statement": "The rise in the automated share is not an artefact of lifetime-volume rules, which grow with account age.",
+            "evidence": f"With those rules removed, the automated share goes {pct(nl['a'], 1)} \u2192 {pct(nl['b'], 1)} "
+                        f"({pts(nl['diff'])}, 95% CI {pts(nl['diff_lo'])} to {pts(nl['diff_hi'])}). "
+                        f"The headline rise is {pts(wm['tx_auto']['diff'])}, so part of its size comes from those rules and the rest survives without them."
+                        if wm.get("tx_auto") else "",
+        })
+
+    # C10-C13 -- absolute levels (per second, so the 2025 block-time change does not distort the comparison)
+    ab = (win or {}).get("abs", {})
+
+    def ratio_verdict(m):
+        if not m or m.get("ratio_per_s_lo") is None:
+            return INCONCLUSIVE
+        return SUPPORTED if m["ratio_per_s_lo"] > 1 else NOT if m["ratio_per_s_hi"] < 1 else INCONCLUSIVE
+
+    def per_s(m, key, unit, d=2):
+        return f"{m['per_s_a']:.{d}f} \u2192 {m['per_s_b']:.{d}f} {unit}"
+
+    if ab.get("auto_tx_per_block"):
+        m = ab["auto_tx_per_block"]
+        claims.append({"id": "C10", "verdict": ratio_verdict(m),
+                       "statement": "Software-driven activity is growing in absolute terms (automated transactions per second).",
+                       "evidence": f"{win['a'][0]}-{win['a'][-1]} \u2192 {win['b'][0]}-{win['b'][-1]}: {per_s(m, 'auto', 'automated tx/s', 1)} "
+                                   f"(x{m['ratio_per_s']:.2f}, 95% CI x{m['ratio_per_s_lo']:.2f} to x{m['ratio_per_s_hi']:.2f}); per block {m['a']:.1f} \u2192 {m['b']:.1f}. "
+                                   f"Block time fell from {ab['_sec_per_block']['a']:.2f} s to {ab['_sec_per_block']['b']:.2f} s, which the per-second figure corrects for."})
+    if ab.get("auto_fee_per_block"):
+        m = ab["auto_fee_per_block"]
+        claims.append({"id": "C11", "verdict": ratio_verdict(m),
+                       "statement": "Automated accounts generate more fee burn in absolute terms (NEAR per second).",
+                       "evidence": f"{per_s(m, 'fee', 'NEAR/s', 4)} (x{m['ratio_per_s']:.2f}, 95% CI x{m['ratio_per_s_lo']:.2f} to x{m['ratio_per_s_hi']:.2f}); "
+                                   f"fees initiated by automated accounts, from the per-transaction burnt amount."})
+    if ab.get("intents_tx_per_block"):
+        m = ab["intents_tx_per_block"]
+        v = SUPPORTED if m["diff_lo"] > 0 else NOT if m["diff_hi"] < 0 else INCONCLUSIVE
+        claims.append({"id": "C12", "verdict": v,
+                       "statement": "Traffic addressed to NEAR Intents is growing in absolute terms (transactions per second).",
+                       "evidence": f"{per_s(m, 'intents', 'tx/s', 2)} (per-block change {m['diff']:+.2f}, 95% CI {m['diff_lo']:+.2f} to {m['diff_hi']:+.2f}). "
+                                   "A lower bound: only transactions addressed to intents.near are counted."})
+    if ab.get("total_tx_per_block"):
+        t, tf = ab["total_tx_per_block"], ab.get("total_fee_per_block")
+        h = ab.get("human_tx_per_block")
+        claims.append({"id": "C13", "verdict": INFO,
+                       "statement": "Total network activity per second changed between the two windows.",
+                       "evidence": f"All transactions {per_s(t, 'tx', 'tx/s', 1)} (x{t['ratio_per_s']:.2f}, CI x{t['ratio_per_s_lo']:.2f} to x{t['ratio_per_s_hi']:.2f})"
+                                   + (f"; human-like {per_s(h, 'h', 'tx/s', 1)} (x{h['ratio_per_s']:.2f})" if h else "")
+                                   + (f"; total fee burn {per_s(tf, 'f', 'NEAR/s', 4)} (x{tf['ratio_per_s']:.2f}, CI x{tf['ratio_per_s_lo']:.2f} to x{tf['ratio_per_s_hi']:.2f})." if tf else ".")})
+    for c in claims:        # a rising share must not be read as rising activity
+        if c["id"] == "C2" and any(x["id"] == "C10" and x["verdict"] != SUPPORTED for x in claims):
+            c["evidence"] += " Caution: the share can rise because other activity fell; see C10 and C13 for absolute levels."
+
     # C5 -- who pays
     a, b = lw.get("fee_init_auto"), lw.get("fee_paid_auto")
     if a and b:
@@ -122,7 +181,32 @@ def evaluate(res: dict, val: dict) -> list[dict]:
             "evidence": f"{c['accounts_for_half_of_automated_txs']} of the {c['automated_accounts_in_sample']} automated accounts in the sample "
                         f"({c['periods'][0]}–{c['periods'][-1]}) produce half of all automated transactions.",
         })
+    claims.sort(key=lambda c: int(c["id"][1:]))
     return claims
+
+
+def bottom_line(claims: list[dict], res: dict) -> str:
+    """One generated paragraph that states what the verdicts jointly say (branches on the computed verdicts)."""
+    by = {c["id"]: c for c in claims}
+    v = lambda i: by.get(i, {}).get("verdict")
+    ab = ((res.get("windows") or {}).get("abs")) or {}
+    if not ab or v("C2") is None:
+        return "Not enough dense months yet to compare two windows; see the verdict table."
+    t, a, f = ab.get("total_tx_per_block"), ab.get("auto_tx_per_block"), ab.get("auto_fee_per_block")
+    h = ab.get("human_tx_per_block")
+    rel_up, abs_up = v("C2") == SUPPORTED, v("C10") == SUPPORTED
+    nums = (f"Total activity went {t['per_s_a']:.1f} \u2192 {t['per_s_b']:.1f} tx/s, automated {a['per_s_a']:.1f} \u2192 {a['per_s_b']:.1f} tx/s"
+            + (f", human-like {h['per_s_a']:.1f} \u2192 {h['per_s_b']:.1f} tx/s" if h else "")
+            + f"; fee burn by automated accounts {f['per_s_a']:.4f} \u2192 {f['per_s_b']:.4f} NEAR/s.") if t and a and f else ""
+    if rel_up and abs_up:
+        return "Software's share of NEAR activity is rising and its absolute activity is rising too. " + nums
+    if rel_up and not abs_up:
+        rel = ((res.get("windows") or {}).get("metrics") or {}).get("relayed")
+        relayed = (f" The relayed share of transactions went {pct(rel['a'])} \u2192 {pct(rel['b'])}." if rel else "")
+        return ("**Software's share of NEAR activity rose, but software activity did not.** The share rose because the rest of the activity "
+                "(classified human-like) fell faster than automated activity did. " + nums + relayed + " The data therefore supports "
+                "\"NEAR activity is increasingly dominated by software\" and does **not** support \"software activity on NEAR is growing\".")
+    return "The automated share did not rise detectably between the two windows. " + nums
 
 
 def would_change_my_mind(claims: list[dict], res: dict) -> list[str]:
@@ -135,6 +219,8 @@ def would_change_my_mind(claims: list[dict], res: dict) -> list[str]:
                    f"{pct(m['lo'])}–{pct(m['hi'])}, so it is **{LABEL[by['C1']['verdict']].lower()}** today. More blocks per month narrows it; the code exposes `BLOCKS_PER_PERIOD`.")
     out.append("**The trend claims (C2–C4) flip** if the first-vs-latest difference interval moves to one side of zero. "
                "A falling automated share, or a falling intents share, would be evidence **against** the adoption thesis and would be reported as such.")
+    out.append("**The absolute-growth claims (C10-C12) flip** if the per-second ratio interval moves above 1 (software activity or its fee burn "
+               "growing) or the Intents level keeps rising; they are decided from the same bootstrap as the share claims.")
     out.append("**The classifier claim (C7) fails** if a labelled set built by someone else (for example a published registry of agent accounts) "
                "gives materially lower recall than the self-built labels. The label builder is `census/labels.py`; swapping in other labels is one CSV.")
     out.append("**The framing fails** if most automated activity turns out to be relayers and games rather than economic agents: "
@@ -159,6 +245,8 @@ def render(res: dict, val: dict, claims: list[dict]) -> str:
       f"{g['blocks']:,} NEAR blocks ({g['first']} → {g['last']}, {g['txs']:,} transactions). "
       "\"Automated\" means *behaves like software*: it includes AI agents, trading and keeper bots, oracles and relayers, "
       "and behaviour alone cannot separate them (see [METHODOLOGY.md](METHODOLOGY.md)).\n")
+    w("## Bottom line\n")
+    w(bottom_line(claims, res) + "\n")
     w("## Verdicts\n")
     w("| # | Claim | Verdict | Evidence |")
     w("|---|---|---|---|")
@@ -195,6 +283,7 @@ def run() -> None:
     claims = evaluate(res, val)
     res["claims"] = claims
     res["thesis_changes_mind"] = would_change_my_mind(claims, res)
+    res["bottom_line"] = bottom_line(claims, res)
     (C.DERIVED / "results.json").write_text(json.dumps(jsonable(res), indent=1))
     (C.ROOT / "THESIS.md").write_text(render(res, val, claims), encoding="utf-8")
     print("wrote THESIS.md: " + ", ".join(f"{c['id']}={LABEL[c['verdict']]}" for c in claims))

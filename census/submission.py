@@ -37,6 +37,12 @@ def build() -> dict:
     for c in claims:
         verdicts[c["verdict"]] = verdicts.get(c["verdict"], 0) + 1
 
+    ab = (res.get("windows") or {}).get("abs") or {}
+    absn = ""
+    if ab.get("auto_tx_per_block") and ab.get("total_tx_per_block"):
+        at, tt = ab["auto_tx_per_block"], ab["total_tx_per_block"]
+        absn = (f" But in absolute terms total activity fell from {tt['per_s_a']:.0f} to {tt['per_s_b']:.0f} tx/s and automated activity from "
+                f"{at['per_s_a']:.0f} to {at['per_s_b']:.0f} tx/s, so the share rose because other activity fell faster.")
     cls = (f" On a held-out test split the classifier finds {pct(t['recall_automated'])} of labelled automated accounts and keeps "
            f"{pct(t['recall_human'])} of labelled humans human (labels are biased toward self-declared bots and engaged humans, so that is an optimistic ceiling).") if t.get("n_classified") else ""
     names = {"info": "descriptive", "not_supported": "not supported"}
@@ -50,7 +56,7 @@ def build() -> dict:
         "profiles that account from its own on-chain history and scores it with an explainable rule list. "
         f"Result: over {span[0]} to {span[-1]}, {pct(a['point'])} of sampled transactions were initiated by software-like accounts "
         f"(95% CI {pct(a['lo'])}-{pct(a['hi'])}; {pct(lo['point'])}-{pct(hi['point'])} across classifier cut-offs), "
-        f"which initiated {pct(fi['point'])} of fees and paid {pct(fp['point'])}."
+        f"which initiated {pct(fi['point'])} of fees and paid {pct(fp['point'])}.{absn}"
         f"{cls} Each claim of the thesis gets a verdict decided by code from confidence intervals ({verdict_txt}), "
         "including ones that cut against it. The dashboard lets anyone verify: random sampled transactions link to an explorer, "
         "and any account's verdict shows the exact rules that fired. NEAR fits because per-account history is public, meta-transactions split "

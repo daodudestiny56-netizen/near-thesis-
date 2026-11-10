@@ -145,6 +145,14 @@ def collect_period(client: Client, label: str, start: datetime, end: datetime, l
     tx_df.to_csv(paths["txs"], index=False)          # written last: marks the month complete
 
 
+def needed_profiles(df: pd.DataFrame) -> dict[str, set]:
+    """(period, account) pairs that must have a behavioural profile: every real signer, and every fee payer that is a
+    different account (a relayer). Built from row-aligned frames: zipping a filtered column against an unfiltered one
+    once silently dropped most relayer profiles."""
+    relayed = df[df["payer"] != df["real_signer"]]
+    return {"real": set(zip(df["period"], df["real_signer"])), "top": set(zip(relayed["period"], relayed["payer"]))}
+
+
 def merge() -> None:
     """Fold per-month files into the three committed tables (applying the same per-month transaction cap)."""
     kept: dict[str, set] = {}
@@ -155,8 +163,7 @@ def merge() -> None:
         df = pd.concat([pd.read_csv(f, low_memory=False) for f in files], ignore_index=True)
         if kind == "txs":
             df = cap_txs(df)
-            kept = {"real": set(zip(df["period"], df["real_signer"])),
-                    "top": set(zip(df["period"], df.loc[df["payer"] != df["real_signer"], "payer"]))}
+            kept = needed_profiles(df)
         elif kind == "accounts" and kept:
             keep = [(p, a) in kept[r] for p, a, r in zip(df["period"], df["account"], df["role"])]
             df = df[keep]
@@ -172,12 +179,12 @@ def run(first: str = C.FIRST_PERIOD, last: str | None = None, blocks: int = C.BL
     months = month_ranges(first)
     if last:
         months = [m for m in months if m[0] <= last]
-    months = [m for m in months if m[0] >= C.DENSE_FROM or (int(m[0][5:]) - 1) % C.SPARSE_STRIDE == 0]
+    months = [m for m in months if m[0] >= C.DENSE_FROM or m[0] in C.BASELINE_MONTHS]
     print(f"collecting {len(months)} months, newest first; {client.rps:.1f} req/s "
           f"({'API key' if client.api_key else 'anonymous'})", flush=True)
     for label, start, end in reversed(months):
         try:
-            collect_period(client, label, start, end, latest, blocks)
+            collect_period(client, label, start, end, latest, blocks if label >= C.DENSE_FROM else C.BASELINE_BLOCKS)
         except Exception as e:                           # keep going; the month is retried on the next run
             print(f"[{label}] FAILED: {e}", file=sys.stderr, flush=True)
     merge()
