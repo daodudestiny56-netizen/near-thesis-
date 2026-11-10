@@ -125,8 +125,8 @@ Snapshot retrieved 2026-11-10. Per DefiLlama, Intents revenue is NEAR's net capt
 
 | Account | Share of all txs | Share of all fees | Main receiver | Relayed |
 |---|---|---|---|---|
-| `intents.near` | 9.0% | 9.5% | `intents.near` | 0% |
 | `jars-oracle.sweat` | 9.0% | 11.8% | `v2.jars.sweat` | 100% |
+| `intents.near` | 9.0% | 9.5% | `intents.near` | 0% |
 | `spin.sweat` | 6.8% | 1.4% | `token.sweat` | 100% |
 | `omni-relayer.bridge.near` | 4.1% | 6.5% | `omni.bridge.near` | 0% |
 | `oracle.sweat` | 3.4% | 9.7% | `token.sweat` | 100% |
@@ -137,7 +137,7 @@ Snapshot retrieved 2026-11-10. Per DefiLlama, Intents revenue is NEAR's net capt
 | `0here.tg` | 0.9% | 0.9% | `v2_1.omni.hot.tg` | 0% |
 | `wx-cruce.near` | 0.8% | 0.9% | `17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1` | 0% |
 | `escrow.ai.near` | 0.8% | 0.2% | `intents.near` | 0% |
-| `offerwall.sweat` | 0.7% | 0.2% | `token.sweat` | 100% |
+| `watcher05.ref-watchdog.near` | 0.7% | 0.5% | `acc.toalice.near` | 0% |
 | `relay.aurora` | 0.7% | 0.3% | `aurora` | 0% |
 | `roundzest8415.near` | 0.7% | 0.3% | `v2.ref-finance.near` | 0% |
 

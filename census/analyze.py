@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 
 from . import config as C
-from .util import jsonable
+from .util import jsonable, ranked, top_value
 
 AUTO, HUMAN, LOW = "automated", "human", "low_activity"
 
@@ -217,9 +217,9 @@ def concentration(txs: pd.DataFrame, last_n_periods: int = 6, top: int = 15) -> 
     auto = t[t["init_class"] == AUTO]
     n_all, fee_all = len(t), t["fee_near"].sum()
     by = (auto.groupby("real_signer")
-          .agg(txs=("hash", "size"), fee=("fee_near", "sum"), top_receiver=("real_receiver", lambda s: s.value_counts().index[0]),
-               relayed=("relayed", "mean"))
-          .sort_values("txs", ascending=False))
+          .agg(txs=("hash", "size"), fee=("fee_near", "sum"), top_receiver=("real_receiver", top_value),
+               relayed=("relayed", "mean")))
+    by = ranked(by, "txs", "real_signer", ["fee"])           # a total order: tied accounts are ordered by fee, then by name
     by["tx_share"] = by["txs"] / n_all
     by["fee_share"] = by["fee"] / fee_all
     cum = by["txs"].cumsum() / by["txs"].sum() if len(by) else pd.Series(dtype=float)

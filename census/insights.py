@@ -17,6 +17,7 @@ import pandas as pd
 
 from . import config as C
 from .analyze import ABS_SPECS, AUTO, HUMAN, LOW, _block_table, make_specs, sec_per_block
+from .util import ranked, top_value
 
 EXPLORER = "https://nearblocks.io/txns/"
 WINDOW_METRICS = ("tx_auto", "tx_auto_nolife", "fee_init_auto", "fee_paid_auto", "relayed", "to_intents")
@@ -73,7 +74,7 @@ def receivers(txs: pd.DataFrame, periods: list[str], top: int = 12) -> dict:
         if not len(k):
             out[name] = []
             continue
-        g = k.groupby("real_receiver").agg(txs=("hash", "size"), fee=("fee_near", "sum")).sort_values("txs", ascending=False)
+        g = ranked(k.groupby("real_receiver").agg(txs=("hash", "size"), fee=("fee_near", "sum")), "txs", "real_receiver", ["fee"])
         out[name] = [{"receiver": r, "tx_share": float(v.txs / len(k)), "fee_share": float(v.fee / k["fee_near"].sum())}
                      for r, v in g.head(top).iterrows()]
         out[name + "_n"] = int(len(k))
@@ -85,8 +86,8 @@ def methods(txs: pd.DataFrame, periods: list[str], top: int = 10) -> dict:
     out = {"periods": periods, "note": "fully fetched subsample (up to 3 txs per signer per month); unweighted"}
     for name, klass in (("automated", AUTO), ("human", HUMAN)):
         k = t[t["init_class"] == klass]
-        vc = k["method"].value_counts()
-        out[name] = [{"method": m, "share": float(c / len(k))} for m, c in vc.head(top).items()] if len(k) else []
+        vc = k["method"].value_counts().rename_axis("m").reset_index(name="c").sort_values(["c", "m"], ascending=[False, True], kind="mergesort")
+        out[name] = [{"method": m, "share": float(c / len(k))} for m, c in zip(vc["m"].head(top), vc["c"].head(top))] if len(k) else []
         out[name + "_n"] = int(len(k))
     return out
 
@@ -210,13 +211,13 @@ def _abs_windows(txs, blocks, a_p, b_p, specs, rng) -> dict:
 
 def accounts(txs: pd.DataFrame, acc: pd.DataFrame, periods: list[str], n_auto: int = 60, n_human: int = 40) -> dict:
     t = txs[txs["period"].isin(periods)]
-    a = acc[(acc["role"] == "real") & acc["period"].isin(periods)].sort_values("period").groupby("account").tail(1)
-    counts = t.groupby("real_signer").agg(sample_txs=("hash", "size"), top_receiver=("real_receiver", lambda s: s.value_counts().index[0]),
+    a = acc[(acc["role"] == "real") & acc["period"].isin(periods)].sort_values("period", kind="mergesort").groupby("account").tail(1)
+    counts = t.groupby("real_signer").agg(sample_txs=("hash", "size"), top_receiver=("real_receiver", top_value),
                                           fee=("fee_near", "sum"))
     a = a.merge(counts, left_on="account", right_index=True, how="inner")
     keep = []
     for klass, n in ((AUTO, n_auto), (HUMAN, n_human)):
-        keep.append(a[a["klass"] == klass].sort_values("sample_txs", ascending=False).head(n))
+        keep.append(a[a["klass"] == klass].sort_values(["sample_txs", "account"], ascending=[False, True], kind="mergesort").head(n))
     a = pd.concat(keep)
     cols = ["n_obs", "txs_count_total", "rate_per_day", "gap_median_s", "fast_share", "periodic_share", "rest_per_day",
             "hour_coverage", "fail_rate", "span_days"]
@@ -230,7 +231,7 @@ def accounts(txs: pd.DataFrame, acc: pd.DataFrame, periods: list[str], n_auto: i
 
 def spot_check(txs: pd.DataFrame, acc: pd.DataFrame, periods: list[str], n: int = 30) -> list[dict]:
     t = txs[txs["period"].isin(periods)]
-    t = t.sample(min(n, len(t)), random_state=C.SEED).sort_values("ts", ascending=False)
+    t = t.sample(min(n, len(t)), random_state=C.SEED).sort_values(["ts", "hash"], ascending=[False, True], kind="mergesort")
     fired = acc[acc["role"] == "real"].set_index(["period", "account"])["fired"].to_dict()
     out = []
     for r in t.to_dict("records"):

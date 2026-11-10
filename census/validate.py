@@ -139,7 +139,7 @@ def run(dev_only: bool = False) -> None:
     # that the pipeline classifies correctly with plenty of history, plus one labelled account it gets wrong (a known miss).
     good = df[(df["klass"] == df["label"]) & (df["n_obs"] >= 100)]
     wrong = df[(df["klass"] != "low_activity") & (df["klass"] != df["label"]) & (df["n_obs"] >= 100)]
-    pick = lambda frame, **kw: (frame.sort_values("score", **kw).account.head(1).tolist() or [None])[0]
+    pick = lambda frame, ascending: (frame.sort_values(["score", "account"], ascending=[ascending, True], kind="mergesort").account.head(1).tolist() or [None])[0]
     out["live_examples"] = {"automated": pick(good[good["label"] == "automated"], ascending=False),
                             "human": pick(good[good["label"] == "human"], ascending=True),
                             "miss": pick(wrong[wrong["label"] == "automated"], ascending=False) or pick(wrong, ascending=False)}

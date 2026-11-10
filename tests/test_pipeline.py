@@ -6,6 +6,7 @@ import pandas as pd
 
 from census import config as C
 from census.analyze import _boot_scaled, sec_per_block
+from census.util import ranked, top_value
 from census.collect import cap_txs, needed_profiles
 from census.insights import hourly
 from census.labels import human_exclusion, looks_automated
@@ -124,6 +125,20 @@ class AbsoluteLevelTests(unittest.TestCase):
         b = pd.DataFrame({"height": [1000, 2000, 3000], "ts": [0, 1220, 2440]})
         self.assertAlmostEqual(sec_per_block(b), 1.22)
         self.assertIsNone(sec_per_block(pd.DataFrame({"height": [5], "ts": [1]})))
+
+
+class DeterministicTieTests(unittest.TestCase):
+    """Rankings must not depend on how a pandas version orders ties (a tie once changed an output table between CI machines)."""
+
+    def test_top_value_breaks_ties_alphabetically(self):
+        self.assertEqual(top_value(pd.Series(["b", "a", "b", "a", "c"])), "a")
+        self.assertEqual(top_value(pd.Series(["z", "y", "y", "z"])), "y")
+
+    def test_ranked_is_a_total_order(self):
+        df = pd.DataFrame({"txs": [5, 5, 5, 9], "fee": [1.0, 1.0, 2.0, 0.1]}, index=pd.Index(["c", "a", "b", "z"], name="acct"))
+        order = list(ranked(df, "txs", "acct", ["fee"]).index)
+        self.assertEqual(order, ["z", "b", "a", "c"])                 # by txs, then fee, then name ascending
+        self.assertEqual(order, list(ranked(df.iloc[::-1], "txs", "acct", ["fee"]).index))   # input order is irrelevant
 
 
 if __name__ == "__main__":
