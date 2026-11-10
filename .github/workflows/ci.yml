@@ -26,6 +26,11 @@ jobs:
       - name: Rebuild every number, chart and sentence from the committed data (offline)
         run: python -m census reproduce
       - name: The rounded, human-readable outputs must not change
-        run: git diff --exit-code -- RESULTS.md THESIS.md
+        run: |
+          if ! git diff --quiet -- RESULTS.md THESIS.md; then
+            d=$(git diff --unified=0 -- RESULTS.md THESIS.md | head -80 | cut -c1-240 | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')
+            echo "::error title=rounded output changed::${d}"
+            exit 1
+          fi
       - name: Pre-registered predictions still match their frozen hash
         run: python -m census predictions
