@@ -33,6 +33,26 @@ Built for the [NEAR HACKATHON](https://nearhackathon.com) · track: **Investment
 
 <!-- RESULTS:END -->
 
+<!-- USE:START -->
+
+## How NEAR and its builders can use this with investors
+
+Investors typically ask three questions about a chain: *is the activity real, is it growing, and does it pay for itself?* Many answers rest on one headline number. This research gives NEAR teams five things that are harder to dismiss than a headline, each with the evidence behind it and the limit that goes with it. Nothing here is investment advice, and "automated" includes AI agents but cannot isolate them.
+
+| | What it gives you | Why an investor should care | How to use it |
+|---|---|---|---|
+| **1. A quality-of-activity metric** | The share of activity that comes from software-like accounts (61% over 2026-06 to 2026-11, 95% CI 57%-65%), validated on held-out accounts (85% of labelled automated accounts found, 99% of humans kept human). | Raw transaction counts are easy for software to inflate. A split with stated error bars is harder to wave away than "billions of transactions". | Quote *human-like vs software-like* activity, with the interval, next to any activity claim. Check your own top callers with the live checker. |
+| **2. The share-versus-activity guard** | Total activity fell 64 to 8 tx/s and automated activity 15 to 5 tx/s, while the software *share* rose. | A rising share can mean the rest left, not that software grew. Presenting only one of the two misleads in either direction, and a sceptical investor will find the other. | Always show the share **and** the absolute level. The dashboard's "Absolute" section does it for you. |
+| **3. A numerate value-capture story** | Estimated L1 burn covers 0.6% of gross issuance; reported Intents revenue covers 15%, up from 1% (revenue x9.3); net issuance itself halved in 2025-11. | Usage not yet paying for issuance is the usual bear case. Here it is measured, with the gap and the trend stated, and not argued. | Turn it into a milestone: at the measured price, Intents revenue would need to grow about x6.6 to cover issuance. Report progress against that number. |
+| **4. A reproducible due-diligence kit** | One command (`python -m census reproduce`) rebuilds every number; a live checker scores *any* NEAR account in the browser; random sampled transactions link to an explorer. | Investors and analysts can verify instead of trusting a deck: check a counterparty, audit the sampling, rerun the maths. Evidence someone else can reproduce is cheap to trust. | Send the dashboard link and the one-line reproduce command with the deck. Offer the live checker for counterparties. |
+| **5. Early warning and accountability** | 8 predictions for December 2026, frozen, hashed and confirmed in Bitcoin blocks before the data exist, plus breakpoints detected from the data (an activity collapse in 2026-04, the issuance step in 2025-11, protocol v87 first seen in 2026-11). | A track record of stating expectations first and resolving them in public is rare and builds credibility; regime changes are what investor updates most need to explain. | Re-run `collect` for each new month (a few minutes per month anonymously, faster with a free FastNEAR key), publish the updated figures on a fixed cadence, and resolve the predictions in public in January 2027, whichever way they land. |
+
+**Using it over the long term.** Refresh the sample monthly and keep the method fixed, so each investor update is comparable with the last. Lead with the three numbers that carry the story (software-like share *and* absolute activity, and how much of issuance usage covers). Let the [thesis verdicts](THESIS.md) change when the data do, including the ones that cut against NEAR. A thesis whose verdicts can go either way is more credible to an investor than one that can only go up.
+
+**Limits to state alongside any of these.** The classifier is validated on labels biased toward self-declared bots, so its accuracy is an optimistic ceiling; Intents revenue and the NEAR price are third-party series used as published; the sample gives sampling error, not certainty; and none of it predicts price.
+
+<!-- USE:END -->
+
 ## Judging map (for a human or a screening agent)
 
 **Five-minute check** (CI runs steps 3-5 on Ubuntu with Python 3.10 and 3.12, and with the minimum numpy and pandas the requirements allow). (1) Open the [live dashboard](https://near-agent-census.vercel.app) and read the bottom line under the hero.

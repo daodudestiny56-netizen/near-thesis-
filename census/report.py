@@ -146,6 +146,8 @@ def run() -> None:
     (C.ROOT / "RESULTS.md").write_text("\n".join(L) + "\n", encoding="utf-8")
     print("wrote RESULTS.md")
     write_readme_block(res, val)
+    from . import investor_use
+    investor_use.write(res, val)
 
 
 START, END = "<!-- RESULTS:START -->", "<!-- RESULTS:END -->"

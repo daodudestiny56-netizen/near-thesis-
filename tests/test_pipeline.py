@@ -141,5 +141,19 @@ class DeterministicTieTests(unittest.TestCase):
         self.assertEqual(order, list(ranked(df.iloc[::-1], "txs", "acct", ["fee"]).index))   # input order is irrelevant
 
 
+class InvestorUseTests(unittest.TestCase):
+    def test_section_is_generated_from_the_data_with_no_placeholders(self):
+        import json
+        from census import config as C
+        from census.investor_use import block
+        res = json.loads((C.DERIVED / "results.json").read_text())
+        val = json.loads((C.DERIVED / "validation.json").read_text())
+        text = block(res, val)
+        self.assertIsNotNone(text)
+        self.assertNotIn("{", text)                       # no unformatted f-string placeholder
+        self.assertIn(f"{res['latest_window']['metrics']['tx_auto']['point'] * 100:.0f}%", text)   # the headline share is quoted from the data
+        self.assertEqual(text.count("| **"), 5)            # five benefits
+
+
 if __name__ == "__main__":
     unittest.main()
