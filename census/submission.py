@@ -39,51 +39,40 @@ def build() -> dict:
         verdicts[c["verdict"]] = verdicts.get(c["verdict"], 0) + 1
 
     ab = (res.get("windows") or {}).get("abs") or {}
-    absn = ""
-    if ab.get("auto_tx_per_block") and ab.get("total_tx_per_block"):
-        at, tt = ab["auto_tx_per_block"], ab["total_tx_per_block"]
-        absn = (f" But in absolute terms total activity fell from {tt['per_s_a']:.0f} to {tt['per_s_b']:.0f} tx/s and automated activity from "
-                f"{at['per_s_a']:.0f} to {at['per_s_b']:.0f} tx/s, so the share rose because other activity fell faster.")
-    cls = (f" On a held-out test split the classifier finds {pct(t['recall_automated'])} of labelled automated accounts and keeps "
-           f"{pct(t['recall_human'])} of labelled humans human (labels are biased toward self-declared bots and engaged humans, so that is an optimistic ceiling).") if t.get("n_classified") else ""
+    sup = res.get("supply") or {}
+    sw, vw, step = sup.get("windows") or {}, ((sup.get("value") or {}).get("windows")) or {}, sup.get("issuance_step")
+    MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+    tt, at = ab.get("total_tx_per_block"), ab.get("auto_tx_per_block")
+    absn = (f" But total activity fell from {tt['per_s_a']:.0f} to {tt['per_s_b']:.0f} tx/s and automated activity from {at['per_s_a']:.0f} to {at['per_s_b']:.0f}, "
+            "so the share rose because the rest fell faster.") if tt and at else ""
+    valn = ""
+    if sw and vw.get("a") and vw.get("b") and step:
+        valn = (f" Does usage pay for issuance? Net issuance, measured from block headers, halved in {MONTHS[int(step['to'][5:]) - 1]} {step['to'][:4]}; "
+                f"estimated fee burn covers {pct(sw['b']['burn_cover'], 1)} of issuance and reported Intents revenue (DefiLlama) {pct(vw['b']['revenue_cover'])}, "
+                f"up from {pct(vw['a']['revenue_cover'])}.")
     names = {"info": "descriptive", "not_supported": "not supported"}
     verdict_txt = ", ".join(f"{n} {names.get(k, k)}" for k, n in sorted(verdicts.items()))
+    clsn = (f" The classifier is validated on a held-out split ({pct(t['recall_automated'])} of labelled automated accounts found, {pct(t['recall_human'])} of humans kept human; "
+            "the labels are biased, so that is an optimistic ceiling).") if t.get("n_classified") else ""
+    predn = " Eight predictions for December 2026 are pre-registered (SHA-256, OpenTimestamps)." if (C.ROOT / "predictions" / "predictions.csv").exists() else ""
 
     idea = (
         "NEAR's pitch is that software, including AI agents, will transact on it, but nobody publishes a measured number. "
-        "The NEAR Agent Census is a re-runnable investment-thesis tool that estimates how much of NEAR's activity is software. "
-        f"It draws a seeded random sample of {g['blocks']:,} blocks ({g['first']} to {g['last']}, {g['txs']:,} transactions), resolves each "
-        "transaction's real initiator (relayed NEP-366 meta-transactions are attributed to the user, with the relayer tracked as fee payer), "
-        "profiles that account from its own on-chain history and scores it with an explainable rule list. "
-        f"Result: over {span[0]} to {span[-1]}, {pct(a['point'])} of sampled transactions were initiated by software-like accounts "
-        f"(95% CI {pct(a['lo'])}-{pct(a['hi'])}; {pct(lo['point'])}-{pct(hi['point'])} across classifier cut-offs), "
-        f"which initiated {pct(fi['point'])} of fees and paid {pct(fp['point'])}.{absn}"
-        f"{cls} Each claim of the thesis gets a verdict decided by code from confidence intervals ({verdict_txt}), "
-        "including ones that cut against it. The dashboard lets anyone verify: random sampled transactions link to an explorer, "
-        "and any account's verdict shows the exact rules that fired. NEAR fits because per-account history is public, meta-transactions split "
-        "who acts from who pays, function-call keys shape agent behaviour, and NEAR Intents traffic is measured. "
-        "One command, python -m census reproduce, rebuilds every number offline. Automated includes AI agents but cannot isolate them. Not investment advice."
+        f"The NEAR Agent Census is a re-runnable investment-thesis tool: a seeded random sample of {g['blocks']:,} blocks ({g['first']} to {g['last']}, {g['txs']:,} transactions); "
+        "each transaction's real initiator (relayed NEP-366 meta-transactions go to the user, the relayer is the fee payer) is scored from its own on-chain history by an explainable rule list. "
+        f"Result: {pct(a['point'])}% of sampled transactions come from software-like accounts (95% CI {pct(a['lo'])}-{pct(a['hi'])}).".replace("%%", "%")
+        + absn + valn
+        + f" {len(claims)} thesis claims get verdicts decided by code from confidence intervals ({verdict_txt}), including ones that cut against the thesis.{clsn}{predn} "
+        "Anyone can verify: a live in-browser account checker (matches the Python pipeline on 30 real accounts), explorer links for sampled transactions, CI on Linux, "
+        "and one command, python -m census reproduce, that rebuilds every number offline. Automated includes AI agents but cannot isolate them. Not investment advice."
     )
-    if ab.get("total_tx_per_block") and ab.get("auto_tx_per_block"):
-        tt, at = ab["total_tx_per_block"], ab["auto_tx_per_block"]
-        post1 = (
-            f"Software-like accounts initiate {pct(a['point'])} of NEAR transactions (95% CI {pct(a['lo'])}-{pct(a['hi'])}).\n\n"
-            f"But total activity fell {tt['per_s_a']:.0f} -> {tt['per_s_b']:.0f} tx/s: the share rose because everything else shrank faster.\n\n"
-            f"Random-sample census, every number re-runnable. Built at NEAR HACKATHON @NEARProtocol #NEARHackathon"
-        )
-    else:
-        post1 = (
-            f"Is NEAR becoming the chain software lives on? We measured it.\n\n"
-            f"In a random sample of {g['blocks']:,} NEAR blocks, software-like accounts initiated {pct(a['point'])} of transactions "
-            f"(95% CI {pct(a['lo'])}-{pct(a['hi'])}). Every number re-runnable.\n\n"
-            f"Built at NEAR HACKATHON @NEARProtocol #NEARHackathon"
-        )
-    intents = ab.get("intents_tx_per_block")
-    post2 = (
-        f"On NEAR, meta-tx split who acts from who pays: software-like accounts initiated {pct(fi['point'])} of fees but paid {pct(fp['point'])}."
-        + (f" Intents traffic: {intents['per_s_a']:.1f} -> {intents['per_s_b']:.1f} tx/s." if intents else "")
-        + f"\n\nVerify any claim yourself. Which metric should we add next?\n\nLive: {LIVE}\nCode: {REPO}"
-    )
+    cov = f"{sw['b']['burn_cover'] * 100:.1f}%" if sw else None
+    post1 = (f"Software-like accounts initiate {pct(a['point'])} of NEAR transactions, but total activity fell {tt['per_s_a']:.0f} -> {tt['per_s_b']:.0f} tx/s. "
+             f"Fee burn covers {cov} of issuance, Intents revenue {pct(vw['b']['revenue_cover'])}.\n\n"
+             "Live account checker + 8 predictions frozen & timestamped.\n\nBuilt at NEAR HACKATHON @NEARProtocol #NEARHackathon") if (tt and vw.get("b")) else (
+             f"Software-like accounts initiate {pct(a['point'])} of NEAR transactions (95% CI {pct(a['lo'])}-{pct(a['hi'])}).\n\nBuilt at NEAR HACKATHON @NEARProtocol #NEARHackathon")
+    post2 = ("Every number is re-runnable (CI green on Linux), every verdict decided by code. Try any NEAR account live in your browser:\n\n"
+             f"Live: {LIVE}\nCode: {REPO}\n\nWhich metric should we add next?")
     return {"idea": idea, "post1": post1, "post2": post2, "verdicts": verdicts}
 
 
@@ -103,6 +92,11 @@ def run() -> None:
            f"## What did you build? ({len(d['idea'])} chars, limit 2000)\n", d["idea"] + "\n",
            f"## X post 1: attach the video ({n1}/{POST_MAX} chars, URLs counted as {TCO})\n", "```", d["post1"], "```\n",
            f"## X post 2: reply to post 1 ({n2}/{POST_MAX} chars)\n", "```", d["post2"], "```\n",
+           "## If you post again: change the form entry\n",
+           "Posting a new X post does not change what the form holds. Either (a) post the new video as a reply under the post already submitted (no change needed), or "
+           "(b) use https://nearhackathon.com/request-changes with the email, NEAR wallet and repository link from the submission, tick **Demo post link** (and **What did you build**), "
+           "and leave a Discord or Telegram handle. The organisers review it by hand.\n",
+           f"### New \"What did you build?\" ({len(d['idea'])} chars, limit 2000)\n", d["idea"] + "\n",
            "Tag @NearLegion and @NearBuilders as well if you want more amplification (optional)."]
     assert n1 <= POST_MAX and n2 <= POST_MAX, f"X post too long: {n1}, {n2}"
     out_dir = C.ROOT / "submission"

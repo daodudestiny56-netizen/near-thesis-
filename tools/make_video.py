@@ -152,9 +152,11 @@ def main() -> None:
                 page.mouse.move(box["x"] + 60 + (box["width"] - 100) * i / (steps - 1), y)
                 page.wait_for_timeout(ms)
 
-        def scene(key, action=None, mid=None):
-            """Start the narration line now, run `action`, then hold until the line (plus a short gap) has finished."""
+        def scene(key, action=None, mid=None, pre=None):
+            """Run `pre` silently (e.g. wait for a live API call), then start the narration line, run `action`, and hold until the line has finished."""
             path, dur = audio[key]
+            if pre:
+                pre()
             began = time.time()
             events.append((began - t0 - start, path))
             cap(SCRIPT[key][0])
@@ -179,8 +181,8 @@ def main() -> None:
             scene("twist", action=lambda: (goto("#c-abs-tx", dy=-70), page.wait_for_timeout(500), sweep("#c-abs-tx", steps=24, ms=100)))
         if "value" in audio and page.locator("#c-cover").count():
             scene("value", action=lambda: (goto("#c-cover", dy=-70), page.wait_for_timeout(500), sweep("#c-cover", steps=24, ms=110)))
-        scene("live1", action=lambda: (goto("#c-live", dy=-90), page.wait_for_timeout(500), click_live(1, "HUMAN")))
-        scene("live2", action=lambda: click_live(0, "AUTOMATED"))
+        scene("live1", pre=lambda: (goto("#c-live", dy=-90), page.wait_for_timeout(700), click_live(1, "HUMAN")))
+        scene("live2", pre=lambda: click_live(0, "AUTOMATED"))
         if "pred" in audio and page.locator("#c-pred").count():
             scene("pred", action=lambda: goto("#c-pred", dy=-80))
         scene("thesis", action=lambda: goto("#c-claims", dy=-90))

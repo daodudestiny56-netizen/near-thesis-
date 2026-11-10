@@ -135,7 +135,8 @@ td.n, th.n { text-align: right; }
 .ex:hover { border-color: var(--ink-3); }
 @media (max-width: 860px) { .calc { grid-template-columns: 1fr; } }
 footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 28px 0 56px; font-size: 14px; color: var(--ink-3); display: grid; gap: 10px; }
-@media (max-width: 860px) { .hero, .grid2 { grid-template-columns: 1fr; } nav .links { display: none; } .hero { padding-top: 34px; } nav .wrap { justify-content: space-between; } }
+@media (max-width: 860px) { .hero, .grid2 { grid-template-columns: 1fr; } nav .links { display: none; } .hero { padding-top: 34px; } nav .wrap { justify-content: space-between; gap: 10px; }
+  .brand { font-size: 16px; gap: 7px; } .hide-sm { display: none; } .btn { padding: 6px 10px; } .wrap { padding: 0 16px; } }
 @media print { nav { display: none; } .card, .tile, .big { box-shadow: none; } }
 </style>
 </head>
@@ -145,7 +146,7 @@ footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 28px 0 56
   <div class="links">
     <a href="#how">Method</a><a href="#trend">Share</a><a href="#absolute">Absolute</a><a href="#value">Value</a><a href="#fees">Fees</a><a href="#finger">Hours</a><a href="#work">Work</a><a href="#trust">Trust</a><a href="#verify">Verify</a><a href="#thesis">Thesis</a>
   </div>
-  <button class="btn" id="theme" type="button" aria-label="Toggle dark mode">◐ Theme</button>
+  <button class="btn" id="theme" type="button" aria-label="Toggle dark mode">◐<span class="hide-sm"> Theme</span></button>
   <a class="btn primary" href="https://github.com/daodudestiny56-netizen/near-thesis-" target="_blank" rel="noopener">Code ↗</a>
 </div></nav>
 
