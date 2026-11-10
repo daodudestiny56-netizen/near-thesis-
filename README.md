@@ -121,7 +121,8 @@ tools/make_video.py     records the demo video from the dashboard (presentation 
 * **Built during the hackathon window.** The repository was created for this event; no code predates 1 Nov 2026.
 * **Libraries:** `numpy`, `pandas` (analysis); everything else is the Python standard library. The dashboard is
   plain HTML/SVG/JavaScript with no dependencies and no network calls at view time. `tools/` additionally uses
-  `playwright` and `imageio-ffmpeg` to record the demo video; they are not needed to run the project.
+  `playwright`, `imageio-ffmpeg` and `edge-tts` (Microsoft's online speech service, which receives the narration text) to record the
+  narrated demo video; none of them is needed to run the project.
 * **Data source:** the public [FastNEAR Transactions API](https://docs.fastnear.com/tx) and NEAR Social (`social.near`) via public RPC.
 * **AI assistance:** the code and documents were written with Claude Code (Anthropic). Validation label candidates were
   harvested by script and reviewed with Claude Code's help; the review log, including every removal and why, is in
