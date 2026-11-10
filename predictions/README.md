@@ -24,8 +24,8 @@ git show predictions-frozen         # the annotated tag quotes the same hash and
 ## Timestamp status
 
 The `.ots` file was created by submitting the SHA-256 digest (plus a random nonce, never the file) to three public OpenTimestamps calendar servers
-(`alice.btc`, `bob.btc`, `finney`). A freshly created proof is **pending** until a Bitcoin block commits it, which takes hours. When it has been upgraded the
-repository is updated and [`TIMESTAMP_STATUS.md`](TIMESTAMP_STATUS.md) says which block. To verify yourself:
+(`alice.btc`, `bob.btc`, `finney`). The proof has since been **upgraded and is confirmed in Bitcoin blocks 975308 and 975310**, both mined on 2026-11-10;
+[`TIMESTAMP_STATUS.md`](TIMESTAMP_STATUS.md) records the details and the independent check against the block headers. To verify yourself:
 
 * with the official client: `ots verify predictions/predictions.csv.ots` (it upgrades a pending proof automatically), or
 * in a browser: drop `predictions.csv.ots` and `predictions.csv` on <https://opentimestamps.org>, or
