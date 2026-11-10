@@ -233,6 +233,7 @@ footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 28px 0 56
   <p class="take" id="take-thesis"></p>
   <div class="card" id="c-claims"></div>
   <div class="card" id="c-mind"></div>
+  <div class="card" id="c-pred"></div>
 </section>
 
 <footer>
@@ -711,6 +712,17 @@ $("take-thesis").innerHTML = `The claim from the brief: <b>NEAR's long-term valu
 $("c-claims").innerHTML = `<div class="scroll" style="max-height:none"><table><thead><tr><th>#</th><th>Claim</th><th>Verdict</th><th>Evidence</th></tr></thead><tbody>` +
   CLAIMS.map(c => { const [k, t] = chip(c.verdict); return `<tr><td>${c.id}</td><td style="white-space:normal;min-width:240px">${esc(c.statement)}</td><td><span class="chip ${k}">${t}</span></td><td style="white-space:normal;min-width:360px;color:var(--ink-2)">${esc(c.evidence)}</td></tr>`; }).join("") + `</tbody></table></div>`;
 $("c-mind").innerHTML = `<h3>What would change my mind</h3><ol style="margin:8px 0 6px;padding-left:20px;color:var(--ink-2)">${(R.thesis_changes_mind || []).map(t => `<li style="margin-bottom:6px">${esc(t).replace(/\*\*(.+?)\*\*/g, "<b style='color:var(--ink)'>$1</b>").replace(/`(.+?)`/g, "<code>$1</code>")}</li>`).join("")}</ol>`;
+{
+  const PR = D.predictions, s = $("c-pred");
+  if (!PR) { s.remove(); } else {
+    const fmt = (v, u) => v === "" || v == null ? "" : u === "share" ? pct(+v, 1) : u === "USD" ? "$" + Math.round(+v).toLocaleString() : (+v).toPrecision(3).replace(/\.?0+$/, "") + (u === "version" ? "" : " " + u);
+    s.innerHTML = `<h3>Pre-registered predictions</h3><p class="sub">Eight falsifiable expectations about December 2026, written down before the data exist. Frozen ${esc(PR.rows[0].frozen_on)}; SHA-256 <code>${esc(PR.sha256.slice(0, 16))}…</code>. ${PR.bitcoin_confirmed ? "Timestamped on Bitcoin with OpenTimestamps." : "Submitted to three public OpenTimestamps calendars; the Bitcoin confirmation is pending (hours) and the repository is updated when it lands."} They are expectations about on-chain activity, not price forecasts, and a refuted one counts against the model.</p>
+      <div class="scroll" style="max-height:none"><table><thead><tr><th>#</th><th>Prediction</th><th class="n">Baseline</th><th>Rule</th><th>Status</th></tr></thead><tbody>` +
+      PR.rows.map(r => `<tr><td>${esc(r.id)}</td><td style="white-space:normal;min-width:300px">${esc(r.statement)}</td><td class="n">${fmt(r.baseline, r.unit)}</td>
+        <td>${esc(r.operator)} ${fmt(r.threshold, r.unit)}${r.threshold_high ? " to " + fmt(r.threshold_high, r.unit) : ""}</td><td><span class="chip info">PENDING · resolves after ${esc(r.resolves_after)}</span></td></tr>`).join("") +
+      `</tbody></table></div><details><summary>How to check and resolve them</summary><p>Verify the hash: <code>python -m census predictions</code>. After 2026-12-31: <code>python -m census collect --first 2026-12 --last 2026-12 &amp;&amp; python -m census external &amp;&amp; python -m census reproduce &amp;&amp; python -m census predictions</code>. The files are in <code>predictions/</code> in the repository.</p></details>`;
+  }
+}
 </script>
 </body>
 </html>

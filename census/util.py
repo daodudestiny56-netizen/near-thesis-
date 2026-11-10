@@ -26,4 +26,4 @@ def jsonable(o):
 def write_csv_gz(df, path) -> None:
     """Write a DataFrame as a gzip CSV with a zeroed header timestamp, so re-runs are byte-identical."""
     with open(path, "wb") as raw, gzip.GzipFile(filename="", mode="wb", fileobj=raw, mtime=0) as gz,             io.TextIOWrapper(gz, encoding="utf-8", newline="") as fh:
-        df.to_csv(fh, index=False)
+        df.to_csv(fh, index=False, lineterminator="\n")   # LF everywhere: the default is os.linesep, so Windows and Linux runs would differ

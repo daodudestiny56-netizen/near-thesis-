@@ -1,5 +1,7 @@
 # NEAR Agent Census
 
+[![ci](https://github.com/daodudestiny56-netizen/near-thesis-/actions/workflows/ci.yml/badge.svg)](https://github.com/daodudestiny56-netizen/near-thesis-/actions/workflows/ci.yml)
+
 **Is NEAR becoming the chain that software lives on? This repo measures it.**
 
 A re-runnable census that classifies NEAR activity as *human-like* or *automated* from on-chain
@@ -30,6 +32,39 @@ Built for the [NEAR HACKATHON](https://nearhackathon.com) · track: **Investment
 * **Thesis verdicts** (decided by code from the intervals, see [THESIS.md](THESIS.md)): 1 inconclusive, 4 descriptive, 4 not supported, 9 supported.
 
 <!-- RESULTS:END -->
+
+## Judging map (for a human or a screening agent)
+
+**Five-minute check** (CI runs steps 3-5 on Ubuntu with Python 3.10 and 3.12, and with the minimum numpy and pandas the requirements allow). (1) Open the [live dashboard](https://near-agent-census.vercel.app) and read the bottom line under the hero.
+(2) In "Verify it yourself", type any NEAR account into the **live checker**; it is scored in your browser with the same rules as the pipeline.
+(3) `python -m unittest discover -s tests` (offline). (4) `python -m census reproduce` rebuilds every number, chart and sentence from the committed
+data; in a fresh clone it regenerates the committed outputs (CI checks that the rounded ones, `RESULTS.md` and `THESIS.md`, do not change). (5) `python -m census predictions` verifies the hash of the pre-registered predictions.
+
+**What the Investment Thesis track asks for, and where we meet it** (the track prompt: *"back it with onchain analytics, live dashboards and models anyone
+can re-run. The score depends on evidence someone else can reproduce"*):
+
+| Track requirement | Where | Honest note |
+|---|---|---|
+| Onchain analytics from public data | Random block sample from the public FastNEAR Transactions API; block headers for supply, burn and fees | We did not use BigQuery: NEAR's docs say NEAR Lake (its feed) was deprecated on 24 Mar 2026 and we could not confirm the dataset is current |
+| A swap/Intents data pull | NEAR Intents revenue and the NEAR price from DefiLlama, committed as a dated snapshot with its methodology | The Intents Explorer API needs a partner JWT we do not have; DefiLlama is third-party and used as published |
+| One command rebuilds every chart from raw data | `python -m census reproduce` (offline, about a minute) | `python -m census collect` redraws the sample from the live API (hours anonymously) |
+| A dashboard: each chart, the method behind it, one plain sentence | [`docs/index.html`](docs/index.html): every chart has a generated takeaway sentence, "How this is computed", and a table view | The dashboard is a single self-contained file, no build step |
+| `THESIS.md` with the claim, evidence for, evidence against, what would change my mind | [THESIS.md](THESIS.md), generated: every claim has a verdict that is are decided by code from confidence intervals | Several verdicts cut **against** the obvious story, and they are reported as such |
+| Never invent numbers; say what cannot be computed | Nothing on the page, in THESIS.md or in this README is typed by hand; limits are in [METHODOLOGY.md](METHODOLOGY.md) | "Automated" includes AI agents but cannot isolate them |
+
+**Criteria NEAR's earlier hackathons judged** (technical implementation, design, impact, originality, sustainability):
+
+| Criterion | Evidence in this repo |
+|---|---|
+| **Technical implementation** | Seeded random block sampling with cluster-bootstrap intervals; a transparent rule classifier validated on a held-out split with Wilson intervals and a leave-one-rule-out ablation; supply, burn and issuance measured from block headers; breakpoints detected from the data; the in-browser classifier is tested to match the Python pipeline exactly; reproducible from a fresh clone (CI re-runs it on Linux) |
+| **Design** | A single-page dashboard with generated takeaways, a time-scaled axis, light and dark themes, a table view behind every chart, and Bricolage Grotesque embedded so it works offline |
+| **Impact** | Answers the questions an investor asks of NEAR: who is transacting, whether activity is growing, and whether usage pays for issuance. The headline finding corrects the naive reading: the software *share* rose, but software *activity* did not |
+| **Originality** | Measures *who* is behind the activity with a validated behavioural classifier; separates who initiates from who pays; shows absolute levels next to shares; a live "is this account software?" checker anyone can run |
+| **Sustainability** | MIT licence; a test suite; every claim re-decided when the data are re-collected; [pre-registered predictions](predictions/README.md) that resolve in 2027 and can embarrass the model |
+
+**What we deliberately did not do.** No price forecast (nothing here is investment advice); no claim to identify AI agents (the classifier separates
+software-like from human-like behaviour only); no trend extrapolation across a step change; no smart contract or on-chain component (the evidence is
+off-chain analytics over public data, so there is nothing to deploy).
 
 ## The problem
 
@@ -132,7 +167,9 @@ data/external/          third-party snapshot (DefiLlama), with retrieval date an
 data/labels/            labelled accounts, evidence, and review notes
 docs/index.html         the dashboard (also deployable on GitHub Pages)
 tests/                  offline unit tests with synthetic accounts of known behaviour
-tools/make_video.py     records the demo video from the dashboard (presentation helper)
+predictions/            eight pre-registered predictions for 2026-12: frozen CSV, its SHA-256 and an OpenTimestamps proof
+tools/make_video.py     records the narrated demo video from the dashboard (presentation helper)
+tools/ots.py            OpenTimestamps stamp/upgrade/info helper for machines where the official client will not start
 ```
 
 ## Hackathon disclosures

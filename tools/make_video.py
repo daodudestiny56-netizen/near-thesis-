@@ -34,6 +34,7 @@ ap = argparse.ArgumentParser()
 ap.add_argument("out", nargs="?", default=str(Path.home() / "Desktop" / "near-agent-census-demo.mp4"))
 ap.add_argument("--voice", default="en-NG-AbeoNeural")
 ap.add_argument("--rate", default="+0%")
+ap.add_argument("--url", default="http://127.0.0.1:8000/", help="where the dashboard is served (the live checker needs a real web origin, not file://)")
 args = ap.parse_args()
 OUT = Path(args.out)
 FFMPEG = imageio_ffmpeg.get_ffmpeg_exe()
@@ -45,28 +46,34 @@ pct = lambda x: f"{x * 100:.0f}"
 n = {v: sum(1 for c in res.get("claims", []) if c["verdict"] == v) for v in ("supported", "not_supported", "inconclusive")}
 
 # ---- the script: (caption shown on screen, line spoken aloud). All numbers come from results.json. --------------------------
+sup = res.get("supply") or {}
+sw, vw, step = sup.get("windows") or {}, ((sup.get("value") or {}).get("windows")) or {}, sup.get("issuance_step")
+MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+nclaims = len(res.get("claims", []))
 SCRIPT = {
-    "hook": ("", "How much of NEAR is software? We measured it."),
+    "hook": ("", "How much of NEAR is software?"),
     "headline": (
-        f"{pct(lw['tx_auto']['point'])}% of sampled NEAR transactions come from software-like accounts "
-        f"(95% CI {pct(lw['tx_auto']['lo'])}-{pct(lw['tx_auto']['hi'])}%). Fees they initiate: {pct(lw['fee_init_auto']['point'])}%.",
-        f"{pct(lw['tx_auto']['point'])} percent of sampled NEAR transactions come from software-like accounts, with a confidence interval of "
-        f"{pct(lw['tx_auto']['lo'])} to {pct(lw['tx_auto']['hi'])}. They initiate {pct(lw['fee_init_auto']['point'])} percent of fees."),
-    "share": ("And the share jumped in 2026. Every point carries its interval.",
-              "That share jumped in twenty twenty-six."),
+        f"{pct(lw['tx_auto']['point'])}% of sampled NEAR transactions come from software-like accounts (95% CI {pct(lw['tx_auto']['lo'])}-{pct(lw['tx_auto']['hi'])}%).",
+        f"{pct(lw['tx_auto']['point'])} percent of sampled NEAR transactions come from software-like accounts."),
 }
-if ab.get("total_tx_per_block") and ab.get("auto_tx_per_block"):
-    tt, at = ab["total_tx_per_block"], ab["auto_tx_per_block"]
-    SCRIPT["twist"] = (
-        f"But total activity fell from {tt['per_s_a']:.0f} to {tt['per_s_b']:.0f} tx/s, and automated from {at['per_s_a']:.0f} to {at['per_s_b']:.0f}. "
-        "The share rose because human-like activity fell faster.",
-        f"But total activity fell from {tt['per_s_a']:.0f} to {tt['per_s_b']:.0f} transactions per second, and automated from "
-        f"{at['per_s_a']:.0f} to {at['per_s_b']:.0f}. The share rose because human-like activity fell faster.")
-SCRIPT["verify"] = ("Verify it yourself: every verdict shows the exact rules that fired, and every sampled transaction links to an explorer.",
-                    "Verify it yourself: every verdict shows the rules that fired, and every transaction links to an explorer.")
+if ab.get("total_tx_per_block"):
+    tt = ab["total_tx_per_block"]
+    SCRIPT["twist"] = (f"But total activity fell from {tt['per_s_a']:.0f} to {tt['per_s_b']:.0f} tx/s: the share rose because everything else fell faster.",
+                       f"But total activity fell from {tt['per_s_a']:.0f} to {tt['per_s_b']:.0f} transactions per second. The share rose because everything else fell faster.")
+if sw and vw.get("a") and vw.get("b") and step:
+    mon = f"{MONTHS[int(step['to'][5:]) - 1]} {step['to'][:4]}"
+    cov, rev_a, rev_b = sw["b"]["burn_cover"] * 100, vw["a"]["revenue_cover"] * 100, vw["b"]["revenue_cover"] * 100
+    SCRIPT["value"] = (
+        f"Does usage pay for issuance? Fee burn covers {cov:.1f}% of it, Intents revenue {rev_b:.0f}% (up from {rev_a:.0f}%). Net issuance halved in {mon}.",
+        f"Fee burn covers {cov:.1f} percent of issuance. Intents revenue covers {rev_b:.0f}, up from {rev_a:.0f}. Issuance itself halved in {mon}.")
+SCRIPT["live1"] = ("Try any NEAR account live, in your browser. This one behaves like a person.", "Try any account, live. This one behaves like a person.")
+SCRIPT["live2"] = ("This one behaves like software.", "This one, like software.")
+if (ROOT / "predictions" / "predictions.csv").exists():
+    SCRIPT["pred"] = ("Eight predictions for December, frozen, hashed and timestamped: the model can be proven wrong.",
+                      "Eight predictions, frozen, hashed and timestamped.")
 SCRIPT["thesis"] = (
-    f"The thesis, tested by code: {n['supported']} supported, {n['not_supported']} not supported, {n['inconclusive']} inconclusive. Evidence, not conviction.",
-    f"The thesis, tested by code: {n['supported']} supported, {n['not_supported']} not supported, {n['inconclusive']} inconclusive.")
+    f"{nclaims} claims decided by code: {n['supported']} supported, {n['not_supported']} not supported, {n['inconclusive']} inconclusive.",
+    f"{nclaims} claims decided by code: {n['supported']} supported, {n['not_supported']} not supported.")
 SCRIPT["close"] = ("", "One command rebuilds every number. Evidence, not conviction.")
 
 OVERLAY_CSS = """
@@ -118,7 +125,7 @@ def main() -> None:
         ctx = browser.new_context(viewport={"width": W, "height": H}, record_video_dir=str(tmp),
                                   record_video_size={"width": W, "height": H}, color_scheme="dark")
         page = ctx.new_page()
-        page.goto((ROOT / "docs/index.html").as_uri())
+        page.goto(args.url)
         page.wait_for_timeout(600)
         page.add_style_tag(content=OVERLAY_CSS)
         page.evaluate("document.body.insertAdjacentHTML('beforeend','<div id=card></div><div id=cap style=opacity:0></div>')")
@@ -158,15 +165,27 @@ def main() -> None:
                 mid()
             page.wait_for_timeout(max(0, (dur + GAP - (time.time() - began)) * 1000))
 
-        scene("hook", action=lambda: card("<h1>How much of NEAR<br>is software?</h1><p>A random-sample census with error bars, not a guess.</p>"))
+        def click_live(index, text):
+            """Click one of the live-checker example chips and wait (up to 25 s) until its result is on screen."""
+            page.locator("#c-live [data-live]").nth(index).click()
+            try:
+                page.wait_for_function("t => document.querySelector('#live-out') && document.querySelector('#live-out').innerText.includes(t)", arg=text, timeout=25000)
+            except Exception:
+                pass
+
+        scene("hook", action=lambda: card("<h1>How much of NEAR<br>is software?</h1><p>And does usage pay for NEAR's issuance?</p>"))
         scene("headline", action=lambda: (hide_card(), page.evaluate("window.scrollTo(0,0)")))
-        scene("share", action=lambda: (goto("#c-share"), page.wait_for_timeout(500), sweep("#c-share")))
         if "twist" in audio and page.locator("#c-abs-tx").count():
-            scene("twist", action=lambda: (goto("#c-abs-tx", dy=-70), page.wait_for_timeout(500), sweep("#c-abs-tx", steps=26, ms=100)))
-        scene("verify", action=lambda: goto("#c-lookup", dy=-80), mid=lambda: goto("#c-spot", dy=-80))
+            scene("twist", action=lambda: (goto("#c-abs-tx", dy=-70), page.wait_for_timeout(500), sweep("#c-abs-tx", steps=24, ms=100)))
+        if "value" in audio and page.locator("#c-cover").count():
+            scene("value", action=lambda: (goto("#c-cover", dy=-70), page.wait_for_timeout(500), sweep("#c-cover", steps=24, ms=110)))
+        scene("live1", action=lambda: (goto("#c-live", dy=-90), page.wait_for_timeout(500), click_live(1, "HUMAN")))
+        scene("live2", action=lambda: click_live(0, "AUTOMATED"))
+        if "pred" in audio and page.locator("#c-pred").count():
+            scene("pred", action=lambda: goto("#c-pred", dy=-80))
         scene("thesis", action=lambda: goto("#c-claims", dy=-90))
         scene("close", action=lambda: card("<h1>One command rebuilds every number</h1><p>Evidence, not conviction.</p><code>python -m census reproduce</code>"
-                                           "<p style='margin-top:26px;font-size:24px'>github.com/daodudestiny56-netizen/near-thesis-</p>"))
+                                           "<p style='margin-top:26px;font-size:24px'>near-agent-census.vercel.app</p>"))
         end = time.time() - t0
         ctx.close()
         webm = next(tmp.glob("*.webm"))

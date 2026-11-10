@@ -23,7 +23,15 @@ def run() -> None:
     vpath = C.DERIVED / "validation.json"
     validation = json.loads(vpath.read_text()) if vpath.exists() else {}
     rules = [{"name": r.name, "points": r.points, "why": r.why} for r in RULES]
-    payload = json.dumps(jsonable({"results": results, "validation": validation, "rules": rules,
+    predictions = None
+    pdir = C.ROOT / "predictions"
+    if (pdir / "predictions.csv").exists():
+        import csv
+        stamp = (pdir / "TIMESTAMP_STATUS.md").read_text(encoding="utf-8") if (pdir / "TIMESTAMP_STATUS.md").exists() else ""
+        predictions = {"sha256": (pdir / "predictions.csv.sha256").read_text().split()[0],
+                       "rows": list(csv.DictReader(open(pdir / "predictions.csv", encoding="utf-8"))),
+                       "bitcoin_confirmed": "**pending**" not in stamp}
+    payload = json.dumps(jsonable({"results": results, "validation": validation, "rules": rules, "predictions": predictions,
                                 "params": {"blocks": C.BLOCKS_PER_PERIOD, "tx_cap": C.MAX_TX_PER_PERIOD, "history": C.HISTORY_LIMIT,
                                            "bootstrap": C.BOOTSTRAP_RESAMPLES, "threshold": C.AUTOMATED_THRESHOLD, "min_obs": C.MIN_OBS}}),
                          allow_nan=False).replace("</", "<\\/")

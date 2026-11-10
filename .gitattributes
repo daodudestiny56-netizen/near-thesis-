@@ -1,0 +1,7 @@
+# The frozen predictions must hash identically on every platform: never convert their line endings.
+predictions/predictions.csv        -text
+predictions/predictions.csv.sha256 -text
+predictions/predictions.csv.ots    binary
+*.gz     binary
+*.woff2  binary
+*.mp4    binary

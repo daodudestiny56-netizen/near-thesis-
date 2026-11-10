@@ -1,0 +1,31 @@
+name: ci
+on: [push, pull_request]
+
+jobs:
+  test:
+    name: py${{ matrix.python }} ${{ matrix.deps }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {python: "3.10", deps: "minimum"}   # the oldest Python and the oldest numpy/pandas the README claims
+          - {python: "3.10", deps: "latest"}
+          - {python: "3.12", deps: "latest"}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install dependencies
+        run: |
+          if [ "${{ matrix.deps }}" = "minimum" ]; then pip install "numpy==1.24.*" "pandas==2.0.*"; else pip install -r requirements.txt; fi
+          python -c "import numpy, pandas; print('numpy', numpy.__version__, 'pandas', pandas.__version__)"
+      - name: Unit tests (offline)
+        run: python -m unittest discover -s tests -v
+      - name: Rebuild every number, chart and sentence from the committed data (offline)
+        run: python -m census reproduce
+      - name: The rounded, human-readable outputs must not change
+        run: git diff --exit-code -- RESULTS.md THESIS.md
+      - name: Pre-registered predictions still match their frozen hash
+        run: python -m census predictions
