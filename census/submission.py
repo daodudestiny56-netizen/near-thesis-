@@ -10,6 +10,7 @@ import json
 from . import config as C
 
 REPO = "https://github.com/daodudestiny56-netizen/near-thesis-"
+LIVE = "https://near-agent-census.vercel.app"
 TCO = 23                                   # X counts every URL as 23 characters
 IDEA_MAX, POST_MAX = 2000, 280
 
@@ -81,7 +82,7 @@ def build() -> dict:
     post2 = (
         f"On NEAR, meta-tx split who acts from who pays: software-like accounts initiated {pct(fi['point'])} of fees but paid {pct(fp['point'])}."
         + (f" Intents traffic: {intents['per_s_a']:.1f} -> {intents['per_s_b']:.1f} tx/s." if intents else "")
-        + f"\n\nVerify any claim on the dashboard. Which metric should we add next?\n\n{REPO}"
+        + f"\n\nVerify any claim yourself. Which metric should we add next?\n\nLive: {LIVE}\nCode: {REPO}"
     )
     return {"idea": idea, "post1": post1, "post2": post2, "verdicts": verdicts}
 
@@ -97,7 +98,7 @@ def run() -> None:
            "| Project name | NEAR Agent Census (2-80 chars) |",
            "| Team lead name | ____ |", "| Email | ____ |", "| Team size | ____ (1, 2 - 4, 4 - 6, 6 - 8, 8+) |",
            "| Tracks | Investment Thesis (`thesis`); add others only if you want |",
-           "| NEAR wallet (mainnet) | ____ |", f"| Repository | {REPO} |", "| Demo post (X) link | ____ (after you post) |",
+           "| NEAR wallet (mainnet) | ____ |", f"| Repository | {REPO} |", f"| Website (optional field) | {LIVE} |", "| Demo post (X) link | ____ (after you post) |",
            "| Consent | read the notice aloud to yourself, then tick it |\n",
            f"## What did you build? ({len(d['idea'])} chars, limit 2000)\n", d["idea"] + "\n",
            f"## X post 1: attach the video ({n1}/{POST_MAX} chars, URLs counted as {TCO})\n", "```", d["post1"], "```\n",
