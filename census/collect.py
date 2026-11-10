@@ -21,6 +21,7 @@ from pathlib import Path
 import pandas as pd
 
 from . import config as C
+from .util import write_csv_gz
 from .client import Client
 from .features import history_features, tx_shape
 from .heights import height_at, latest_height, to_ns
@@ -168,8 +169,7 @@ def merge() -> None:
             keep = [(p, a) in kept[r] for p, a, r in zip(df["period"], df["account"], df["role"])]
             df = df[keep]
         out = C.DERIVED / f"{name}.csv.gz"
-        with gzip.open(out, "wt", newline="") as fh:
-            df.to_csv(fh, index=False)
+        write_csv_gz(df, out)
         print(f"merged {len(files)} months -> {out.name}: {len(df):,} rows")
 
 

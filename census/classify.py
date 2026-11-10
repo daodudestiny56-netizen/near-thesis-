@@ -23,6 +23,7 @@ from typing import Callable
 import pandas as pd
 
 from . import config as C
+from .util import write_csv_gz
 
 
 def _ok(x) -> bool:
@@ -119,8 +120,7 @@ def run() -> None:
 
     acc = classify_frame(acc)
     out = C.DERIVED / "account_classes.csv.gz"
-    with gzip.open(out, "wt", newline="") as fh:
-        acc.to_csv(fh, index=False)
+    write_csv_gz(acc, out)
 
     key = acc.set_index(["period", "account", "role"])["klass"]
     sc = acc.set_index(["period", "account", "role"])["score"]
@@ -139,7 +139,6 @@ def run() -> None:
     paid = [(p, a, "real" if a == r else "top") for p, a, r in zip(txs["period"], txs["payer"], txs["real_signer"])]
     txs["payer_class"] = [key.get(k, "low_activity") for k in paid]
     out2 = C.DERIVED / "classified_txs.csv.gz"
-    with gzip.open(out2, "wt", newline="") as fh:
-        txs.to_csv(fh, index=False)
+    write_csv_gz(txs, out2)
     print(f"classified {len(acc):,} account-periods and {len(txs):,} sampled transactions")
     print(txs["init_class"].value_counts(normalize=True).round(3).to_string())
