@@ -71,6 +71,18 @@ h1 em { font-style: normal; color: var(--auto); }
 .tile .k { font-size: 12.5px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-3); }
 .tile .v { font-size: 38px; font-weight: 700; letter-spacing: -.03em; line-height: 1.1; margin: 6px 0 4px; font-variant-numeric: tabular-nums; }
 .tile .s { font-size: 14px; color: var(--ink-2); }
+.min { display: grid; gap: 12px; margin-top: 14px; }
+.min .row { display: grid; grid-template-columns: 38px 1fr; gap: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px 20px; box-shadow: var(--shadow); }
+.min .row i { font-style: normal; width: 32px; height: 32px; border-radius: 10px; background: var(--surface-2); display: grid; place-items: center; font-weight: 700; font-size: 15px; }
+.min .row h4 { margin: 0 0 2px; font-size: 18px; letter-spacing: -.01em; }
+.min .row p { margin: 0; font-size: 16px; color: var(--ink-2); }
+.min .row p b { color: var(--ink); font-weight: 650; }
+.proof { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.proof a { display: block; text-decoration: none; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; box-shadow: var(--shadow); }
+.proof a:hover { border-color: var(--ink-3); }
+.proof .k { font-size: 12.5px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-3); }
+.proof .v { font-size: 30px; font-weight: 700; letter-spacing: -.03em; line-height: 1.15; margin: 6px 0 4px; font-variant-numeric: tabular-nums; }
+.proof .s { font-size: 14.5px; color: var(--ink-2); }
 .read { display: flex; gap: 14px; background: var(--warn-bg); border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent); border-radius: 14px; padding: 14px 18px; margin: 20px 0 8px; font-size: 15.5px; color: var(--ink); }
 .bl { background: var(--surface); border: 1px solid var(--ink); border-radius: 16px; padding: 18px 22px; margin: 20px 0 8px; font-size: 18px; line-height: 1.5; color: var(--ink); box-shadow: var(--shadow); }
 .bl b { font-weight: 700; }
@@ -144,7 +156,7 @@ footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 28px 0 56
 <nav><div class="wrap">
   <a class="brand" href="#top"><i></i>NEAR Agent Census</a>
   <div class="links">
-    <a href="#how">Method</a><a href="#trend">Share</a><a href="#absolute">Absolute</a><a href="#value">Value</a><a href="#fees">Fees</a><a href="#finger">Hours</a><a href="#work">Work</a><a href="#trust">Trust</a><a href="#verify">Verify</a><a href="#thesis">Thesis</a>
+    <a href="#oneminute">Summary</a><a href="#how">Method</a><a href="#trend">Share</a><a href="#absolute">Absolute</a><a href="#value">Value</a><a href="#fees">Fees</a><a href="#finger">Hours</a><a href="#work">Work</a><a href="#trust">Trust</a><a href="#verify">Verify</a><a href="#thesis">Thesis</a>
   </div>
   <button class="btn" id="theme" type="button" aria-label="Toggle dark mode">◐<span class="hide-sm"> Theme</span></button>
   <a class="btn primary" href="https://github.com/daodudestiny56-netizen/near-thesis-" target="_blank" rel="noopener">Code ↗</a>
@@ -163,6 +175,14 @@ footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 28px 0 56
 <div class="tiles" id="tiles"></div>
 <div class="bl" id="bottom"></div>
 <div class="read" id="caveat"></div>
+
+<section id="oneminute">
+  <div class="sec-h"><span class="no">★</span><h2>In one minute</h2></div>
+  <div class="min" id="min"></div>
+  <div class="sec-h" style="margin-top:34px"><span class="no">✓</span><h2>Why this is different</h2></div>
+  <p class="take">Most analyses of a chain start from a published headline figure. This one starts from the chain's own blocks, so the error bars are ones we can state and you can check.</p>
+  <div class="proof" id="proof"></div>
+</section>
 
 <section id="how">
   <div class="sec-h"><span class="no">01</span><h2>How the census works</h2></div>
@@ -386,6 +406,22 @@ $("tiles").innerHTML = [
 $("bottom").innerHTML = R.bottom_line ? `<b>Bottom line.</b> ` + esc(R.bottom_line).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>") : "";
 $("caveat").innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
   <div><b>Read this first.</b> "Software" means <i>behaves like software</i>: AI agents, trading and keeper bots, oracles and relayers all count, and behaviour cannot tell an LLM agent from a cron job. This is an upper-level proxy for agent activity, not a headcount of AI agents. The result is also sensitive to where the classifier's cut-off sits, so it is shown as a range.</div>`;
+
+/* in one minute, and why it is different (every number is read from the payload) */
+{
+  const ab = (WIN || {}).abs || {}, vw = (((R.supply || {}).value || {}).windows) || {}, vb = vw.b, PR0 = D.predictions;
+  const rows = [];
+  if (lwA) rows.push(["1", "Most NEAR transactions now come from software.", `<b>${pct(lwA.point)}</b> of sampled transactions over ${spanTxt} were initiated by accounts that behave like software (95% interval ${pct(lwA.lo)}–${pct(lwA.hi)}). That includes AI agents, trading bots and relayers; behaviour cannot isolate AI agents alone.`]);
+  if (ab.total_tx_per_block && ab.auto_tx_per_block) rows.push(["2", "But software did not boom. Everything else fell faster.", `Total activity went <b>${ab.total_tx_per_block.per_s_a.toFixed(1)} → ${ab.total_tx_per_block.per_s_b.toFixed(1)} tx/s</b> and software activity <b>${ab.auto_tx_per_block.per_s_a.toFixed(1)} → ${ab.auto_tx_per_block.per_s_b.toFixed(1)} tx/s</b>. A rising share alone would have hidden this.`]);
+  if (vb && vb.revenue_cover != null && vb.burn_cover_usd != null) rows.push(["3", "Usage does not yet pay for the new NEAR created.", `Per <b>$100</b> of newly issued NEAR, about <b>$${(vb.revenue_cover * 100).toFixed(1)}</b> is matched by reported Intents revenue and <b>$${(vb.burn_cover_usd * 100).toFixed(1)}</b> by L1 fee burn, leaving about <b>$${(100 - vb.combined_cover * 100).toFixed(1)}</b> uncovered. Intents revenue is a third-party series; see the calculator below.`]);
+  if (T.n_classified) rows.push(["4", "How sure are we?", `Tested on <b>${T.n_classified}</b> held-out labelled accounts: <b>${pct(T.recall_automated)}</b> of automated accounts found and <b>${pct(T.recall_human)}</b> of humans kept human. The labels lean toward self-declared bots, so read that as an optimistic ceiling.`]);
+  $("min").innerHTML = rows.map(r => `<div class="row"><i>${r[0]}</i><div><h4>${r[1]}</h4><p>${r[2]}</p></div></div>`).join("");
+  const cards = [["Measured, not scraped", `${gen.blocks.toLocaleString()} blocks`, `drawn at random from the chain (seeded), ${gen.txs.toLocaleString()} transactions, cluster-bootstrap 95% intervals.`, "#how"]];
+  if (T.n_classified) cards.push(["Validated on held-out accounts", pct(T.balanced_accuracy) + " balanced accuracy", `on ${T.n_classified} accounts the rules never saw; each rule is ablated.`, "#trust"]);
+  cards.push(["Check any account yourself", "Live checker", "paste a NEAR account and score it in your browser from the public API.", "#verify"]);
+  if (PR0) cards.push(["Predictions on Bitcoin", `${PR0.rows.length} frozen`, PR0.bitcoin_confirmed ? "hashed and confirmed in Bitcoin blocks before the data exist; resolved in public after 2026-12-31." : "hashed and submitted for Bitcoin timestamping before the data exist.", "#thesis"]);
+  $("proof").innerHTML = cards.map(c => `<a href="${c[3]}"><div class="k">${c[0]}</div><div class="v">${c[1]}</div><div class="s">${c[2]}</div></a>`).join("");
+}
 
 /* how it works */
 $("steps").innerHTML = [

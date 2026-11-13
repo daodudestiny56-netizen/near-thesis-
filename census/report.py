@@ -199,7 +199,9 @@ def write_readme_block(res: dict, val: dict) -> None:
         st_ = sup["issuance_step"]
         L.append(f"* **Does usage pay for issuance?** Estimated L1 burn covered {pct(sw_['b']['burn_cover'], 2)} of gross issuance in {sw_['b']['periods'][0]} to {sw_['b']['periods'][-1]}. "
                  + (f"Reported Intents revenue (DefiLlama) covered {pct(vw_['b']['revenue_cover'])}, up from {pct(vw_['a']['revenue_cover'])} (x{vw_['b']['intents_revenue_usd_day'] / vw_['a']['intents_revenue_usd_day']:.1f} revenue, "
-                    f"x{vw_['b']['issuance_usd_day'] / vw_['a']['issuance_usd_day']:.2f} issuance in USD). " if vw_.get("a") and vw_.get("b") else "")
+                    f"x{vw_['b']['issuance_usd_day'] / vw_['a']['issuance_usd_day']:.2f} issuance in USD). "
+                    f"Per $100 of newly issued NEAR (valued at the period's average price), about ${vw_['b']['revenue_cover'] * 100:.1f} is matched by reported Intents revenue and "
+                    f"${vw_['b']['burn_cover_usd'] * 100:.1f} by L1 fee burn, leaving about ${100 - vw_['b']['combined_cover'] * 100:.1f} uncovered. " if vw_.get("a") and vw_.get("b") else "")
                  + f"Net issuance itself fell from {st_['before']:.2f} to {st_['after']:.2f} NEAR/s between {st_['from']} and {st_['to']}.")
     counts = {}
     for c in res.get("claims", []):
